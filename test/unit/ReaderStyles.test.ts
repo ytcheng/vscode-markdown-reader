@@ -84,3 +84,12 @@ it('uses a compact, light-text search input like the editor find control', async
   expect(css).toMatch(/\.search-bar\s*\{[^}]*min-height:\s*28px[^}]*padding:\s*3px 5px/s);
   expect(css).toMatch(/\.search-bar input\s*\{[^}]*height:\s*26px[^}]*padding:\s*1px 6px[^}]*color:\s*var\(--vscode-input-foreground, #f0f0f0\)/s);
 });
+
+it('keeps the desktop search bar width stable as the match count changes', async () => {
+  const source = await readFile('media/reader.less', 'utf8');
+  const { css } = await less.render(source, { filename: 'media/reader.less' });
+
+  expect(css).toMatch(/\.search-bar\s*\{[^}]*width:\s*338px[^}]*box-sizing:\s*border-box/s);
+  expect(css).toMatch(/\.search-bar input\s*\{[^}]*flex:\s*1[^}]*width:\s*auto/s);
+  expect(css).toMatch(/\.search-count\s*\{[^}]*width:\s*56px/s);
+});
