@@ -237,8 +237,8 @@ body:has(.toc[hidden]) .toc-resizer {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 32px;
-  padding: 4px 6px;
+  min-height: 28px;
+  padding: 3px 5px;
   color: var(--vscode-widget-foreground, inherit);
   border: 1px solid var(--vscode-widget-border, var(--border-color));
   border-radius: 4px;
@@ -262,8 +262,10 @@ body:has(.toc[hidden]) .toc-resizer {
 .search-bar input {
   width: 180px;
   min-width: 0;
-  padding: 4px 6px;
-  color: inherit;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 1px 6px;
+  color: var(--vscode-input-foreground, #f0f0f0);
   border: 1px solid var(--vscode-input-border, var(--border-color));
   border-radius: 2px;
   background: var(--vscode-input-background, var(--color-white));
@@ -278,8 +280,8 @@ body:has(.toc[hidden]) .toc-resizer {
 }
 
 .search-bar button {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   color: inherit;
   border: 0;

@@ -76,3 +76,11 @@ it('uses a borderless TOC control inside the document, compact navigation, and c
   expect(css).toMatch(/::-webkit-scrollbar\s*\{[^}]*width:\s*8px/s);
   expect(css).toMatch(/::-webkit-scrollbar-track\s*\{[^}]*background:\s*#fff/s);
 });
+
+it('uses a compact, light-text search input like the editor find control', async () => {
+  const source = await readFile('media/reader.less', 'utf8');
+  const { css } = await less.render(source, { filename: 'media/reader.less' });
+
+  expect(css).toMatch(/\.search-bar\s*\{[^}]*min-height:\s*28px[^}]*padding:\s*3px 5px/s);
+  expect(css).toMatch(/\.search-bar input\s*\{[^}]*height:\s*26px[^}]*padding:\s*1px 6px[^}]*color:\s*var\(--vscode-input-foreground, #f0f0f0\)/s);
+});
