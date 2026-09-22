@@ -84,6 +84,65 @@ describe('ReaderApp', () => {
     expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(false);
   });
 
+  it('wraps between search matches with Enter and Shift+Enter', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>one one</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'one';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(document.querySelector('#search-count')?.textContent).toBe('2 of 2');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+    expect(document.querySelector('#search-count')?.textContent).toBe('1 of 2');
+  });
+
+  it('navigates and closes search with find-bar controls', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>one one</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'one';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    (document.querySelector('#search-next') as HTMLButtonElement).click();
+    expect(document.querySelector('#search-count')?.textContent).toBe('2 of 2');
+    (document.querySelector('#search-previous') as HTMLButtonElement).click();
+    expect(document.querySelector('#search-count')?.textContent).toBe('1 of 2');
+    (document.querySelector('#search-close') as HTMLButtonElement).click();
+    expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(true);
+  });
+
+  it('closes search with Escape and removes transient marks', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>one</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'one';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(true);
+    expect(document.querySelectorAll('#document mark[data-search-match]')).toHaveLength(0);
+    expect(document.querySelector('#document')?.textContent).toBe('one');
+  });
+
+  it('clears stale search results when a newer render replaces the document', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>one</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'one';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    app.handleMessage({ type: 'render', result: { ...renderResult(2), html: '<p>two</p>' } });
+
+    expect(document.querySelectorAll('#document mark[data-search-match]')).toHaveLength(0);
+    expect(document.querySelector('#search-count')?.textContent).toBe('0 of 0');
+  });
+
   it('ignores stale renders and builds a stable TOC for skipped heading levels', () => {
     const { app } = setup();
 

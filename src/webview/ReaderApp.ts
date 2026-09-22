@@ -79,7 +79,8 @@ export class ReaderApp {
 
   applyRender(result: RenderResult, restore?: ViewportState): void {
     if (result.revision <= this.#revision) return;
-    this.#closeSearch(false);
+    this.#clearSearchMatches();
+    this.#updateSearchControls();
     this.#revision = result.revision;
     this.#headings = result.headings;
     this.article.innerHTML = result.html;
@@ -230,17 +231,11 @@ export class ReaderApp {
     this.#selectSearchMatch(this.#activeSearchMatchIndex + (event.shiftKey ? -1 : 1));
   };
 
-  #onSearchPrevious = (): void => {
-    this.#selectSearchMatch(this.#activeSearchMatchIndex - 1);
-  };
+  #onSearchPrevious = (): void => this.#selectSearchMatch(this.#activeSearchMatchIndex - 1);
 
-  #onSearchNext = (): void => {
-    this.#selectSearchMatch(this.#activeSearchMatchIndex + 1);
-  };
+  #onSearchNext = (): void => this.#selectSearchMatch(this.#activeSearchMatchIndex + 1);
 
-  #onSearchClose = (): void => {
-    this.#closeSearch();
-  };
+  #onSearchClose = (): void => this.#closeSearch();
 
   #onResizerPointerDown = (event: PointerEvent): void => {
     if (this.#isNarrow()) return;
@@ -368,13 +363,13 @@ export class ReaderApp {
     this.searchInput.select();
   }
 
-  #closeSearch(focusArticle = true): void {
+  #closeSearch(): void {
     this.#searchOpen = false;
     this.searchBar.hidden = true;
     this.searchInput.value = '';
     this.#clearSearchMatches();
     this.#updateSearchControls();
-    if (focusArticle) this.article.focus();
+    this.article.focus();
   }
 
   #updateSearch(query: string): void {
@@ -427,10 +422,7 @@ export class ReaderApp {
   }
 
   #selectSearchMatch(index: number): void {
-    if (this.#searchMatches.length === 0) {
-      this.#updateSearchControls();
-      return;
-    }
+    if (this.#searchMatches.length === 0) return this.#updateSearchControls();
     this.#activeSearchMatchIndex = (index + this.#searchMatches.length) % this.#searchMatches.length;
     for (const [position, match] of this.#searchMatches.entries()) {
       match.toggleAttribute('data-search-active', position === this.#activeSearchMatchIndex);
