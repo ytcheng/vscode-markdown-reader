@@ -84,6 +84,43 @@ describe('ReaderApp', () => {
     expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(false);
   });
 
+  it('matches visible text across inline elements as one result', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>hello <strong>world</strong></p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'hello world';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(document.querySelectorAll('#document mark[data-search-match]')).toHaveLength(2);
+    expect(document.querySelector('#search-count')?.textContent).toBe('1 of 1');
+    expect(document.querySelector('#document strong')?.textContent).toBe('world');
+  });
+
+  it('keeps Unicode case-folded matches aligned with the original text', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>İx</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'x';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(document.querySelector('#document mark[data-search-match]')?.textContent).toBe('x');
+    expect(document.querySelector('#search-count')?.textContent).toBe('1 of 1');
+  });
+
+  it('closes the narrow TOC drawer before opening search', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 600 });
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+    (document.querySelector('#toggle-toc') as HTMLButtonElement).click();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+
+    expect((document.querySelector('#toc-drawer') as HTMLElement).hidden).toBe(true);
+    expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(false);
+  });
+
   it('wraps between search matches with Enter and Shift+Enter', () => {
     const { app } = setup();
     app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>one one</p>' } });

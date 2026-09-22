@@ -305,6 +305,7 @@
       this.#setScrollTop(restore.scrollTop);
     }
     #openSearch() {
+      if (this.#drawerOpen) this.#closeDrawer();
       this.#searchOpen = true;
       this.searchBar.hidden = false;
       this.searchInput.focus();
@@ -320,7 +321,7 @@
     }
     #updateSearch(query) {
       this.#clearSearchMatches();
-      const normalizedQuery = query.toLowerCase();
+      const normalizedQuery = this.#caseFold(query).text;
       if (normalizedQuery.length === 0) {
         this.#updateSearchControls();
         return;
@@ -330,31 +331,52 @@
         acceptNode: (node) => node.textContent && !node.parentElement?.closest("mark[data-search-match]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
       });
       for (let node = walker.nextNode(); node; node = walker.nextNode()) textNodes.push(node);
-      for (const textNode of textNodes) {
-        const text = textNode.textContent ?? "";
-        const normalizedText = text.toLowerCase();
-        let start = 0;
-        let matchStart = normalizedText.indexOf(normalizedQuery, start);
-        if (matchStart === -1) continue;
-        const fragment = this.document.createDocumentFragment();
-        while (matchStart !== -1) {
-          if (matchStart > start) fragment.append(this.document.createTextNode(text.slice(start, matchStart)));
-          const match = this.document.createElement("mark");
-          match.className = "search-match";
-          match.dataset.searchMatch = "";
-          match.textContent = text.slice(matchStart, matchStart + query.length);
-          fragment.append(match);
-          this.#searchMatches.push(match);
-          start = matchStart + query.length;
-          matchStart = normalizedText.indexOf(normalizedQuery, start);
-        }
-        if (start < text.length) fragment.append(this.document.createTextNode(text.slice(start)));
-        textNode.replaceWith(fragment);
+      const nodeRanges = [];
+      let documentText = "";
+      for (const node of textNodes) {
+        const start = documentText.length;
+        documentText += node.textContent ?? "";
+        nodeRanges.push({ node, start, end: documentText.length });
       }
+      const foldedDocument = this.#caseFold(documentText);
+      const matches = [];
+      for (let foldedStart = foldedDocument.text.indexOf(normalizedQuery); foldedStart !== -1; ) {
+        const foldedEnd = foldedStart + normalizedQuery.length - 1;
+        matches.push({
+          start: foldedDocument.starts[foldedStart],
+          end: foldedDocument.ends[foldedEnd],
+          elements: []
+        });
+        foldedStart = foldedDocument.text.indexOf(normalizedQuery, foldedStart + normalizedQuery.length);
+      }
+      for (const { node, start: nodeStart, end: nodeEnd } of nodeRanges) {
+        const text = node.textContent ?? "";
+        const segments = matches.filter((match) => match.start < nodeEnd && match.end > nodeStart);
+        if (segments.length === 0) continue;
+        const fragment = this.document.createDocumentFragment();
+        let textStart = 0;
+        for (const searchMatch of segments) {
+          const matchStart = Math.max(searchMatch.start, nodeStart) - nodeStart;
+          const matchEnd = Math.min(searchMatch.end, nodeEnd) - nodeStart;
+          if (matchStart > textStart) fragment.append(this.document.createTextNode(text.slice(textStart, matchStart)));
+          const mark = this.document.createElement("mark");
+          mark.className = "search-match";
+          mark.dataset.searchMatch = "";
+          mark.textContent = text.slice(matchStart, matchEnd);
+          fragment.append(mark);
+          searchMatch.elements.push(mark);
+          textStart = matchEnd;
+        }
+        if (textStart < text.length) fragment.append(this.document.createTextNode(text.slice(textStart)));
+        node.replaceWith(fragment);
+      }
+      this.#searchMatches = matches;
       this.#selectSearchMatch(0);
     }
     #clearSearchMatches() {
-      for (const match of this.#searchMatches) match.replaceWith(this.document.createTextNode(match.textContent ?? ""));
+      for (const { elements } of this.#searchMatches) {
+        for (const match of elements) match.replaceWith(this.document.createTextNode(match.textContent ?? ""));
+      }
       this.article.normalize();
       this.#searchMatches = [];
       this.#activeSearchMatchIndex = -1;
@@ -363,10 +385,26 @@
       if (this.#searchMatches.length === 0) return this.#updateSearchControls();
       this.#activeSearchMatchIndex = (index + this.#searchMatches.length) % this.#searchMatches.length;
       for (const [position, match] of this.#searchMatches.entries()) {
-        match.toggleAttribute("data-search-active", position === this.#activeSearchMatchIndex);
+        for (const element of match.elements) element.toggleAttribute("data-search-active", position === this.#activeSearchMatchIndex);
       }
       this.#updateSearchControls();
-      this.#searchMatches[this.#activeSearchMatchIndex].scrollIntoView({ behavior: "auto", block: "center" });
+      this.#searchMatches[this.#activeSearchMatchIndex].elements[0]?.scrollIntoView({ behavior: "auto", block: "center" });
+    }
+    #caseFold(value) {
+      let text = "";
+      const starts = [];
+      const ends = [];
+      for (let index = 0; index < value.length; ) {
+        const character = String.fromCodePoint(value.codePointAt(index));
+        const folded = character.toLowerCase();
+        text += folded;
+        for (let foldedIndex = 0; foldedIndex < folded.length; foldedIndex++) {
+          starts.push(index);
+          ends.push(index + character.length);
+        }
+        index += character.length;
+      }
+      return { text, starts, ends };
     }
     #updateSearchControls() {
       const count = this.#searchMatches.length;
