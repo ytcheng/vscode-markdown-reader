@@ -21,14 +21,14 @@ function renderResult(revision = 1) {
 function setup() {
   document.body.innerHTML = `
     <div class="reader">
-      <header class="reader-toolbar">
-        <button id="open-source" type="button">Edit</button>
-        <button id="toggle-toc" type="button" aria-expanded="true">Contents</button>
-      </header>
       <nav id="toc" class="toc" aria-label="Table of contents"></nav>
+      <div id="toc-resizer" class="toc-resizer" role="separator" aria-label="Resize table of contents" aria-orientation="vertical"></div>
       <div id="toc-drawer-backdrop" hidden></div>
       <aside id="toc-drawer" hidden aria-hidden="true"></aside>
-      <main class="document-container"><article id="document" class="markdown-body"></article></main>
+      <main class="document-container">
+        <button id="toggle-toc" class="toc-toggle" type="button" aria-label="Toggle table of contents" aria-expanded="true"><span aria-hidden="true">☰</span></button>
+        <article id="document" class="markdown-body"></article>
+      </main>
     </div>`;
   const postMessage = vi.fn();
   const setState = vi.fn();
@@ -77,6 +77,103 @@ describe('ReaderApp', () => {
     expect(postMessage).toHaveBeenCalledWith({ type: 'openLink', href: 'https://example.com' });
   });
 
+  it('marks the clicked TOC item as the current location', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+
+    (document.querySelector('#toc a[href="#two"]') as HTMLAnchorElement).click();
+
+    expect(document.querySelector('#toc a[href="#two"]')?.getAttribute('aria-current')).toBe('location');
+  });
+
+  it('keeps the clicked TOC item current while no heading is intersecting during smooth scroll', () => {
+    let notify: ((entries: IntersectionObserverEntry[]) => void) | undefined;
+    class TestIntersectionObserver {
+      constructor(callback: (entries: IntersectionObserverEntry[]) => void) { notify = callback; }
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', TestIntersectionObserver);
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+    (document.querySelector('#toc a[href="#two"]') as HTMLAnchorElement).click();
+
+    notify!([{ target: document.getElementById('one')!, isIntersecting: false, boundingClientRect: { top: -20 } } as unknown as IntersectionObserverEntry]);
+
+    expect(document.querySelector('#toc a[href="#two"]')?.getAttribute('aria-current')).toBe('location');
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the clicked TOC item current when the observer reports the previous heading during smooth scroll', () => {
+    let notify: ((entries: IntersectionObserverEntry[]) => void) | undefined;
+    class TestIntersectionObserver {
+      constructor(callback: (entries: IntersectionObserverEntry[]) => void) { notify = callback; }
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', TestIntersectionObserver);
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+    (document.querySelector('#toc a[href="#two"]') as HTMLAnchorElement).click();
+
+    notify!([{ target: document.getElementById('one')!, isIntersecting: true, boundingClientRect: { top: 16 } } as unknown as IntersectionObserverEntry]);
+
+    expect(document.querySelector('#toc a[href="#two"]')?.getAttribute('aria-current')).toBe('location');
+    vi.unstubAllGlobals();
+  });
+
+  it('does not unlock navigation from the observer\'s initial target entry before smooth scroll finishes', () => {
+    let notify: ((entries: IntersectionObserverEntry[]) => void) | undefined;
+    class TestIntersectionObserver {
+      constructor(callback: (entries: IntersectionObserverEntry[]) => void) { notify = callback; }
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', TestIntersectionObserver);
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+    (document.querySelector('#toc a[href="#two"]') as HTMLAnchorElement).click();
+
+    notify!([
+      { target: document.getElementById('one')!, isIntersecting: true, boundingClientRect: { top: 0 } },
+      { target: document.getElementById('two')!, isIntersecting: true, boundingClientRect: { top: 300 } }
+    ] as unknown as IntersectionObserverEntry[]);
+    notify!([{ target: document.getElementById('one')!, isIntersecting: true, boundingClientRect: { top: 0 } } as unknown as IntersectionObserverEntry]);
+
+    expect(document.querySelector('#toc a[href="#two"]')?.getAttribute('aria-current')).toBe('location');
+    vi.unstubAllGlobals();
+  });
+
+  it('resumes automatic TOC tracking after the navigation scroll ends', () => {
+    let notify: ((entries: IntersectionObserverEntry[]) => void) | undefined;
+    class TestIntersectionObserver {
+      constructor(callback: (entries: IntersectionObserverEntry[]) => void) { notify = callback; }
+      observe(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', TestIntersectionObserver);
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+    (document.querySelector('#toc a[href="#two"]') as HTMLAnchorElement).click();
+
+    document.dispatchEvent(new Event('scrollend'));
+    notify!([{ target: document.getElementById('one')!, isIntersecting: true, boundingClientRect: { top: 0 } } as unknown as IntersectionObserverEntry]);
+
+    expect(document.querySelector('#toc a[href="#one"]')?.getAttribute('aria-current')).toBe('location');
+    vi.unstubAllGlobals();
+  });
+
+  it('clears pointer focus from a TOC link after navigation', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+
+    const tocLink = document.querySelector('#toc a[href="#two"]') as HTMLAnchorElement;
+    tocLink.focus();
+    tocLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+
+    expect(document.activeElement).not.toBe(tocLink);
+  });
+
   it('filters TOC depth and applies configured widths', () => {
     const { app } = setup();
     app.handleMessage({ type: 'render', result: renderResult() });
@@ -85,6 +182,19 @@ describe('ReaderApp', () => {
     expect(document.querySelector('#toc a[href="#two"]')).toBeNull();
     expect(document.body.style.getPropertyValue('--reader-toc-width')).toBe('280px');
     expect(document.body.style.getPropertyValue('--reader-content-max-width')).toBe('760px');
+  });
+
+  it('updates and persists the TOC width after a wide-screen drag', () => {
+    const { app, postMessage } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+
+    const resizer = document.querySelector('#toc-resizer') as HTMLElement;
+    resizer.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 260 }));
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 330 }));
+    window.dispatchEvent(new MouseEvent('pointerup', { clientX: 330 }));
+
+    expect(document.body.style.getPropertyValue('--reader-toc-width')).toBe('330px');
+    expect(postMessage).toHaveBeenCalledWith({ type: 'setTocWidth', width: 330 });
   });
 
   it('restores a matching heading first and clamps fallback scroll state', () => {

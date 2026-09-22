@@ -17,11 +17,14 @@ export class ReaderApp {
   #activeSlug: string | undefined;
   #tocVisible = true;
   #tocMaxDepth = 3;
+  #tocWidth = 260;
   #headings: HeadingItem[] = [];
   #observer: IntersectionObserver | undefined;
   #visibleHeadings = new Map<string, number>();
+  #pendingNavigationSlug: string | undefined;
   #scrollFrame: number | undefined;
   #drawerOpen = false;
+  #resizingToc = false;
   #started = false;
 
   constructor(
@@ -34,8 +37,12 @@ export class ReaderApp {
     this.#started = true;
     this.window.addEventListener('message', this.#onMessage);
     this.document.addEventListener('click', this.#onClick);
+    this.document.addEventListener('scrollend', this.#onScrollEnd);
     this.window.addEventListener('keydown', this.#onKeyDown);
     this.window.addEventListener('scroll', this.#onScroll, { passive: true });
+    this.resizer.addEventListener('pointerdown', this.#onResizerPointerDown);
+    this.window.addEventListener('pointermove', this.#onResizerPointerMove);
+    this.window.addEventListener('pointerup', this.#onResizerPointerUp);
     this.api.postMessage({ type: 'ready' });
   }
 
@@ -50,7 +57,7 @@ export class ReaderApp {
         return;
       case 'setLayout':
         this.#tocMaxDepth = Math.max(1, Math.min(6, message.tocMaxDepth));
-        this.document.body.style.setProperty('--reader-toc-width', `${Math.max(220, Math.min(320, message.tocWidth))}px`);
+        this.#setTocWidth(message.tocWidth);
         this.document.body.style.setProperty('--reader-content-max-width', `${Math.max(560, Math.min(1600, message.contentMaxWidth))}px`);
         this.#renderToc();
         return;
@@ -92,8 +99,12 @@ export class ReaderApp {
   dispose(): void {
     this.window.removeEventListener('message', this.#onMessage);
     this.document.removeEventListener('click', this.#onClick);
+    this.document.removeEventListener('scrollend', this.#onScrollEnd);
     this.window.removeEventListener('keydown', this.#onKeyDown);
     this.window.removeEventListener('scroll', this.#onScroll);
+    this.resizer.removeEventListener('pointerdown', this.#onResizerPointerDown);
+    this.window.removeEventListener('pointermove', this.#onResizerPointerMove);
+    this.window.removeEventListener('pointerup', this.#onResizerPointerUp);
     this.#observer?.disconnect();
     if (this.#scrollFrame !== undefined) this.window.cancelAnimationFrame(this.#scrollFrame);
     this.#started = false;
@@ -148,6 +159,7 @@ export class ReaderApp {
     if (href.startsWith('#')) {
       event.preventDefault();
       this.#navigateTo(this.#decodeSlug(href.slice(1)));
+      if (event.detail > 0) anchor.blur();
       if (this.#drawerOpen) this.#closeDrawer();
     } else {
       event.preventDefault();
@@ -177,6 +189,25 @@ export class ReaderApp {
     }
   };
 
+  #onResizerPointerDown = (event: PointerEvent): void => {
+    if (this.#isNarrow()) return;
+    event.preventDefault();
+    this.#resizingToc = true;
+    this.#setTocWidth(event.clientX);
+  };
+
+  #onResizerPointerMove = (event: PointerEvent): void => {
+    if (!this.#resizingToc) return;
+    this.#setTocWidth(event.clientX);
+  };
+
+  #onResizerPointerUp = (event: PointerEvent): void => {
+    if (!this.#resizingToc) return;
+    this.#setTocWidth(event.clientX);
+    this.#resizingToc = false;
+    this.api.postMessage({ type: 'setTocWidth', width: this.#tocWidth });
+  };
+
   #onScroll = (): void => {
     if (this.#scrollFrame !== undefined) return;
     if (typeof this.window.requestAnimationFrame !== 'function') {
@@ -187,6 +218,10 @@ export class ReaderApp {
       this.#scrollFrame = undefined;
       this.#saveViewport();
     });
+  };
+
+  #onScrollEnd = (): void => {
+    this.#pendingNavigationSlug = undefined;
   };
 
   #renderToc(): void {
@@ -248,10 +283,15 @@ export class ReaderApp {
         if (entry.isIntersecting) this.#visibleHeadings.set(slug, entry.boundingClientRect.top);
         else this.#visibleHeadings.delete(slug);
       }
+      if (this.#pendingNavigationSlug) {
+        this.#setActiveSlug(this.#pendingNavigationSlug);
+        return;
+      }
       const candidates = [...this.#visibleHeadings.entries()];
       const below = candidates.filter(([, top]) => top >= 0).sort((left, right) => left[1] - right[1])[0];
       const above = candidates.filter(([, top]) => top < 0).sort((left, right) => right[1] - left[1])[0];
-      this.#setActiveSlug((below ?? above)?.[0]);
+      const activeSlug = (below ?? above)?.[0];
+      if (activeSlug) this.#setActiveSlug(activeSlug);
     });
     this.#observer = observer;
 
@@ -269,8 +309,10 @@ export class ReaderApp {
   }
 
   #navigateTo(slug: string): void {
-    if (!this.#scrollToHeading(slug)) return;
+    if (!this.document.getElementById(slug)) return;
+    this.#pendingNavigationSlug = slug;
     this.#setActiveSlug(slug);
+    this.#scrollToHeading(slug);
     this.#saveViewport();
   }
 
@@ -335,6 +377,11 @@ export class ReaderApp {
     element.scrollTop = Math.max(0, Math.min(max, value));
   }
 
+  #setTocWidth(width: number): void {
+    this.#tocWidth = Math.max(180, Math.min(480, Math.round(width)));
+    this.document.body.style.setProperty('--reader-toc-width', `${this.#tocWidth}px`);
+  }
+
   #decodeSlug(slug: string): string {
     try {
       return decodeURIComponent(slug);
@@ -357,6 +404,10 @@ export class ReaderApp {
 
   private get backdrop(): HTMLElement {
     return this.#requiredElement('toc-drawer-backdrop');
+  }
+
+  private get resizer(): HTMLElement {
+    return this.#requiredElement('toc-resizer');
   }
 
   private get toggleTocButton(): HTMLButtonElement {

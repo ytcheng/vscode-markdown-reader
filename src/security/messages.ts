@@ -11,6 +11,11 @@ export function parseWebviewMessage(value: unknown): WebviewToExtensionMessage |
     case 'ready':
     case 'toggleToc':
       return hasOnlyKeys(value, ['type']) ? { type: value.type } : undefined;
+    case 'setTocWidth':
+      return hasOnlyKeys(value, ['type', 'width']) &&
+        typeof value.width === 'number' && Number.isSafeInteger(value.width) && value.width >= 180 && value.width <= 480
+        ? { type: 'setTocWidth', width: value.width }
+        : undefined;
     case 'openLink':
       return hasOnlyKeys(value, ['type', 'href']) && typeof value.href === 'string' && value.href.length <= MAX_HREF_LENGTH
         ? { type: 'openLink', href: value.href }

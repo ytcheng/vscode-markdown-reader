@@ -61,7 +61,7 @@
     }],
     "commands": [
       { "command": "markdownReader.openPreview", "title": "Open Preview", "category": "Markdown Reader" },
-      { "command": "markdownReader.openSource", "title": "Open Source", "category": "Markdown Reader" },
+      { "command": "markdownReader.openSource", "title": "Open Source", "category": "Markdown Reader", "icon": "$(edit)" },
       { "command": "markdownReader.togglePreview", "title": "Toggle Preview", "category": "Markdown Reader" },
       { "command": "markdownReader.toggleToc", "title": "Toggle Table of Contents", "category": "Markdown Reader" }
     ],
@@ -71,8 +71,7 @@
     ],
     "menus": {
       "editor/title": [
-        { "command": "markdownReader.openSource", "when": "activeCustomEditorId == markdownReader.preview", "group": "navigation@1" },
-        { "command": "markdownReader.toggleToc", "when": "activeCustomEditorId == markdownReader.preview", "group": "navigation@2" }
+        { "command": "markdownReader.openSource", "when": "activeCustomEditorId == markdownReader.preview", "group": "navigation@1" }
       ]
     },
     "configuration": {
@@ -80,7 +79,7 @@
       "properties": {
         "markdownReader.toc.enabled": { "type": "boolean", "default": true },
         "markdownReader.toc.maxDepth": { "type": "integer", "default": 3, "minimum": 1, "maximum": 6 },
-        "markdownReader.toc.width": { "type": "integer", "default": 260, "minimum": 220, "maximum": 320 },
+        "markdownReader.toc.width": { "type": "integer", "default": 260, "minimum": 180, "maximum": 480 },
         "markdownReader.content.maxWidth": { "type": "integer", "default": 900, "minimum": 560, "maximum": 1600 }
       }
     }

@@ -12,19 +12,26 @@
     #activeSlug;
     #tocVisible = true;
     #tocMaxDepth = 3;
+    #tocWidth = 260;
     #headings = [];
     #observer;
     #visibleHeadings = /* @__PURE__ */ new Map();
+    #pendingNavigationSlug;
     #scrollFrame;
     #drawerOpen = false;
+    #resizingToc = false;
     #started = false;
     start() {
       if (this.#started) return;
       this.#started = true;
       this.window.addEventListener("message", this.#onMessage);
       this.document.addEventListener("click", this.#onClick);
+      this.document.addEventListener("scrollend", this.#onScrollEnd);
       this.window.addEventListener("keydown", this.#onKeyDown);
       this.window.addEventListener("scroll", this.#onScroll, { passive: true });
+      this.resizer.addEventListener("pointerdown", this.#onResizerPointerDown);
+      this.window.addEventListener("pointermove", this.#onResizerPointerMove);
+      this.window.addEventListener("pointerup", this.#onResizerPointerUp);
       this.api.postMessage({ type: "ready" });
     }
     handleMessage(message) {
@@ -38,7 +45,7 @@
           return;
         case "setLayout":
           this.#tocMaxDepth = Math.max(1, Math.min(6, message.tocMaxDepth));
-          this.document.body.style.setProperty("--reader-toc-width", `${Math.max(220, Math.min(320, message.tocWidth))}px`);
+          this.#setTocWidth(message.tocWidth);
           this.document.body.style.setProperty("--reader-content-max-width", `${Math.max(560, Math.min(1600, message.contentMaxWidth))}px`);
           this.#renderToc();
           return;
@@ -75,8 +82,12 @@
     dispose() {
       this.window.removeEventListener("message", this.#onMessage);
       this.document.removeEventListener("click", this.#onClick);
+      this.document.removeEventListener("scrollend", this.#onScrollEnd);
       this.window.removeEventListener("keydown", this.#onKeyDown);
       this.window.removeEventListener("scroll", this.#onScroll);
+      this.resizer.removeEventListener("pointerdown", this.#onResizerPointerDown);
+      this.window.removeEventListener("pointermove", this.#onResizerPointerMove);
+      this.window.removeEventListener("pointerup", this.#onResizerPointerUp);
       this.#observer?.disconnect();
       if (this.#scrollFrame !== void 0) this.window.cancelAnimationFrame(this.#scrollFrame);
       this.#started = false;
@@ -122,6 +133,7 @@
       if (href.startsWith("#")) {
         event.preventDefault();
         this.#navigateTo(this.#decodeSlug(href.slice(1)));
+        if (event.detail > 0) anchor.blur();
         if (this.#drawerOpen) this.#closeDrawer();
       } else {
         event.preventDefault();
@@ -148,6 +160,22 @@
         first.focus();
       }
     };
+    #onResizerPointerDown = (event) => {
+      if (this.#isNarrow()) return;
+      event.preventDefault();
+      this.#resizingToc = true;
+      this.#setTocWidth(event.clientX);
+    };
+    #onResizerPointerMove = (event) => {
+      if (!this.#resizingToc) return;
+      this.#setTocWidth(event.clientX);
+    };
+    #onResizerPointerUp = (event) => {
+      if (!this.#resizingToc) return;
+      this.#setTocWidth(event.clientX);
+      this.#resizingToc = false;
+      this.api.postMessage({ type: "setTocWidth", width: this.#tocWidth });
+    };
     #onScroll = () => {
       if (this.#scrollFrame !== void 0) return;
       if (typeof this.window.requestAnimationFrame !== "function") {
@@ -158,6 +186,9 @@
         this.#scrollFrame = void 0;
         this.#saveViewport();
       });
+    };
+    #onScrollEnd = () => {
+      this.#pendingNavigationSlug = void 0;
     };
     #renderToc() {
       const headings = this.#headings.filter((heading) => heading.level <= this.#tocMaxDepth);
@@ -210,10 +241,15 @@
           if (entry.isIntersecting) this.#visibleHeadings.set(slug, entry.boundingClientRect.top);
           else this.#visibleHeadings.delete(slug);
         }
+        if (this.#pendingNavigationSlug) {
+          this.#setActiveSlug(this.#pendingNavigationSlug);
+          return;
+        }
         const candidates = [...this.#visibleHeadings.entries()];
         const below = candidates.filter(([, top]) => top >= 0).sort((left, right) => left[1] - right[1])[0];
         const above = candidates.filter(([, top]) => top < 0).sort((left, right) => right[1] - left[1])[0];
-        this.#setActiveSlug((below ?? above)?.[0]);
+        const activeSlug = (below ?? above)?.[0];
+        if (activeSlug) this.#setActiveSlug(activeSlug);
       });
       this.#observer = observer;
       for (const heading of this.#headings) {
@@ -228,8 +264,10 @@
       this.#setScrollTop(restore.scrollTop);
     }
     #navigateTo(slug) {
-      if (!this.#scrollToHeading(slug)) return;
+      if (!this.document.getElementById(slug)) return;
+      this.#pendingNavigationSlug = slug;
       this.#setActiveSlug(slug);
+      this.#scrollToHeading(slug);
       this.#saveViewport();
     }
     #scrollToHeading(slug, offset = 0) {
@@ -284,6 +322,10 @@
       const max = Math.max(0, element.scrollHeight - element.clientHeight);
       element.scrollTop = Math.max(0, Math.min(max, value));
     }
+    #setTocWidth(width) {
+      this.#tocWidth = Math.max(180, Math.min(480, Math.round(width)));
+      this.document.body.style.setProperty("--reader-toc-width", `${this.#tocWidth}px`);
+    }
     #decodeSlug(slug) {
       try {
         return decodeURIComponent(slug);
@@ -302,6 +344,9 @@
     }
     get backdrop() {
       return this.#requiredElement("toc-drawer-backdrop");
+    }
+    get resizer() {
+      return this.#requiredElement("toc-resizer");
     }
     get toggleTocButton() {
       return this.#requiredElement("toggle-toc");

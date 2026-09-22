@@ -20,4 +20,5 @@ export type WebviewToExtensionMessage =
   | { type: 'openSource'; line?: number }
   | { type: 'openLink'; href: string }
   | { type: 'toggleToc' }
+  | { type: 'setTocWidth'; width: number }
   | { type: 'viewportChanged'; state: ViewportState };

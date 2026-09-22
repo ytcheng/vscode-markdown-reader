@@ -73,6 +73,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   toggleToc(): void {
     const panel = this.#activePanel;
     if (!panel) return;
+    this.#toggleToc(panel);
+  }
+
+  #toggleToc(panel: vscode.WebviewPanel): void {
     const current = this.#states.get(panel)?.tocVisible ?? true;
     void panel.webview.postMessage({ type: 'setTocVisible', visible: !current });
     this.#states.set(panel, { ...(this.#states.get(panel) ?? { scrollTop: 0, collapsedSlugs: [] }), tocVisible: !current });
@@ -93,10 +97,21 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     if (!message) return;
     if (message.type === 'ready') {
       this.#navigation.ready(document.uri.toString(), panel.webview);
-      void this.#sessionFor(document).renderNow();
+      await this.#postLayout(panel);
+      await this.#sessionFor(document).renderNow();
+      return;
     }
     if (message.type === 'viewportChanged') this.#states.set(panel, message.state);
     if (message.type === 'openSource') await this.openSource(document.uri);
+    if (message.type === 'toggleToc') {
+      this.#toggleToc(panel);
+      return;
+    }
+    if (message.type === 'setTocWidth') {
+      await vscode.workspace.getConfiguration('markdownReader').update('toc.width', message.width, vscode.ConfigurationTarget.Global);
+      await this.#postLayout(panel);
+      return;
+    }
     if (message.type !== 'openLink') return;
 
     const kind = classifyLink(message.href);
@@ -110,5 +125,15 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       }
       else await vscode.commands.executeCommand('vscode.open', resolved.uri);
     }
+  }
+
+  async #postLayout(panel: vscode.WebviewPanel): Promise<void> {
+    const configuration = vscode.workspace.getConfiguration('markdownReader');
+    await panel.webview.postMessage({
+      type: 'setLayout',
+      tocMaxDepth: configuration.get<number>('toc.maxDepth', 3),
+      tocWidth: configuration.get<number>('toc.width', 260),
+      contentMaxWidth: configuration.get<number>('content.maxWidth', 900)
+    });
   }
 }
