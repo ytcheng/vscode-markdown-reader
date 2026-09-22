@@ -5,6 +5,8 @@ import { ReaderApp } from '../../src/webview/ReaderApp.js';
 
 const scrollIntoView = vi.fn();
 let currentApp: ReaderApp | undefined;
+const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+const originalExecCommandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand');
 
 function renderResult(revision = 1) {
   return {
@@ -58,6 +60,10 @@ beforeEach(() => {
 afterEach(() => {
   currentApp?.dispose();
   currentApp = undefined;
+  if (originalClipboardDescriptor) Object.defineProperty(navigator, 'clipboard', originalClipboardDescriptor);
+  else Reflect.deleteProperty(navigator, 'clipboard');
+  if (originalExecCommandDescriptor) Object.defineProperty(document, 'execCommand', originalExecCommandDescriptor);
+  else Reflect.deleteProperty(document, 'execCommand');
 });
 
 describe('ReaderApp', () => {
@@ -226,6 +232,42 @@ describe('ReaderApp', () => {
 
     expect(scrollIntoView).toHaveBeenCalledTimes(2);
     expect(postMessage).toHaveBeenCalledWith({ type: 'openLink', href: 'https://example.com' });
+  });
+
+  it('copies fenced code and confirms completion from its copy button', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const { app } = setup();
+    app.handleMessage({
+      type: 'render',
+      result: { ...renderResult(), html: '<pre class="hljs-pre"><button class="copy-code-btn" type="button" data-copy-code aria-label="Copy code">Copy</button><code class="hljs language-ts">const answer = 42;</code></pre>' }
+    });
+
+    (document.querySelector('[data-copy-code]') as HTMLButtonElement).click();
+    await Promise.resolve();
+
+    expect(writeText).toHaveBeenCalledWith('const answer = 42;');
+    expect(document.querySelector('[data-copy-code]')?.textContent).toBe('Copied');
+    expect(document.querySelector('[data-copy-code]')?.getAttribute('aria-label')).toBe('Code copied');
+  });
+
+  it('falls back to the copy command when Clipboard API access is rejected', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Permission denied'));
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    const { app } = setup();
+    app.handleMessage({
+      type: 'render',
+      result: { ...renderResult(), html: '<pre class="hljs-pre"><button class="copy-code-btn" type="button" data-copy-code aria-label="Copy code">Copy</button><code class="hljs language-ts">const answer = 42;</code></pre>' }
+    });
+
+    (document.querySelector('[data-copy-code]') as HTMLButtonElement).click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(document.querySelector('[data-copy-code]')?.textContent).toBe('Copied');
   });
 
   it('marks the clicked TOC item as the current location', () => {

@@ -142,6 +142,12 @@
         this.#closeDrawer();
         return;
       }
+      const copyButton = target.closest("button[data-copy-code]");
+      if (copyButton) {
+        const code = copyButton.closest("pre")?.querySelector("code")?.textContent;
+        if (code !== void 0) void this.#copyCode(copyButton, code);
+        return;
+      }
       const anchor = target.closest("a[href]");
       if (!anchor) return;
       const href = anchor.getAttribute("href") ?? "";
@@ -201,6 +207,41 @@
     #onSearchPrevious = () => this.#selectSearchMatch(this.#activeSearchMatchIndex - 1);
     #onSearchNext = () => this.#selectSearchMatch(this.#activeSearchMatchIndex + 1);
     #onSearchClose = () => this.#closeSearch();
+    async #copyCode(button, code) {
+      try {
+        if (this.window.navigator.clipboard?.writeText) {
+          try {
+            await this.window.navigator.clipboard.writeText(code);
+          } catch {
+            if (!this.#copyWithCommand(code)) throw new Error("Copy command failed");
+          }
+        } else {
+          if (!this.#copyWithCommand(code)) throw new Error("Copy command failed");
+        }
+        button.textContent = "Copied";
+        button.setAttribute("aria-label", "Code copied");
+        this.window.setTimeout(() => {
+          button.textContent = "Copy";
+          button.setAttribute("aria-label", "Copy code");
+        }, 1500);
+      } catch {
+        button.textContent = "Copy failed";
+        button.setAttribute("aria-label", "Copy failed");
+      }
+    }
+    #copyWithCommand(code) {
+      const textarea = this.document.createElement("textarea");
+      textarea.value = code;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      this.document.body.append(textarea);
+      textarea.select();
+      try {
+        return this.document.execCommand("copy");
+      } finally {
+        textarea.remove();
+      }
+    }
     #onResizerPointerDown = (event) => {
       if (this.#isNarrow()) return;
       event.preventDefault();

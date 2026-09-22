@@ -48,4 +48,24 @@ describe('MarkdownRenderer', () => {
     ]);
     expect(result.html).toContain('src="__MD_READER_RESOURCE_0__"');
   });
+
+  it('highlights fenced code and adds an accessible copy control', () => {
+    const result = new MarkdownRenderer().render('```ts\nconst answer = 42;\n```', 1);
+
+    expect(result.html).toContain('<pre class="hljs-pre">');
+    expect(result.html).toContain('class="copy-code-btn"');
+    expect(result.html).toContain('data-copy-code');
+    expect(result.html).toContain('aria-label="Copy code"');
+    expect(result.html).toContain('class="hljs copyable language-ts"');
+    expect(result.html).toContain('lang="ts"');
+    expect(result.html).toContain('hljs-keyword');
+  });
+
+  it('renders unknown fenced languages as escaped plain text with a copy control', () => {
+    const result = new MarkdownRenderer().render('```unknown\n<a>\n```', 1);
+
+    expect(result.html).toContain('class="copy-code-btn"');
+    expect(result.html).toContain('&lt;a&gt;');
+    expect(result.html).not.toContain('<a>');
+  });
 });

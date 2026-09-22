@@ -101,3 +101,11 @@ it('uses clear enabled find controls and the editor focus border', async () => {
   expect(css).toMatch(/\.search-bar input\s*\{[^}]*border:\s*1px solid var\(--vscode-focusBorder, #007acc\)/s);
   expect(css).toMatch(/\.search-bar button:not\(:disabled\)\s*\{[^}]*color:\s*#c5c5c5/s);
 });
+
+it('positions a compact copy control over highlighted code blocks', async () => {
+  const source = await readFile('media/reader.less', 'utf8');
+  const { css } = await less.render(source, { filename: 'media/reader.less' });
+
+  expect(css).toMatch(/\.copy-code-btn\s*\{[^}]*position:\s*absolute[^}]*top:\s*8px[^}]*right:\s*8px/s);
+  expect(css).toMatch(/\.copy-code-btn:hover\s*\{[^}]*background:/s);
+});

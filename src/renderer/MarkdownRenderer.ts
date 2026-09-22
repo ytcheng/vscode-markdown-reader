@@ -1,6 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import type { Env, MarkdownIt as MarkdownItInstance, RendererRule, Token } from 'markdown-it';
 import taskLists from 'markdown-it-task-lists';
+import hljs from 'highlight.js/lib/common';
 import { SlugGenerator } from './SlugGenerator.js';
 import type { HeadingItem, RenderResource, RenderResult } from './types.js';
 
@@ -31,6 +32,18 @@ export class MarkdownRenderer {
       resources.push({ placeholder, kind: 'image', href: String(token.attrGet('src') ?? '') });
       token.attrSet('src', placeholder);
       return defaultImageRule(tokens, index, options, env, self);
+    };
+
+    this.#md.renderer.rules.fence = (tokens, index) => {
+      const token = tokens[index];
+      const language = token.info.trim().split(/\s+/, 1)[0].toLowerCase();
+      const code = language && hljs.getLanguage(language)
+        ? hljs.highlight(token.content, { language, ignoreIllegals: true }).value
+        : this.#md.utils.escapeHtml(token.content);
+      const languageClass = language ? ` language-${this.#md.utils.escapeHtml(language)}` : '';
+      const languageAttribute = language ? ` lang="${this.#md.utils.escapeHtml(language)}"` : '';
+
+      return `<pre class="hljs-pre"><button class="copy-code-btn" type="button" data-copy-code aria-label="Copy code">Copy</button><code class="hljs copyable${languageClass}"${languageAttribute}>${code}</code></pre>\n`;
     };
   }
 
