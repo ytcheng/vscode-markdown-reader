@@ -97,6 +97,18 @@ describe('ReaderApp', () => {
     expect(document.querySelector('#document strong')?.textContent).toBe('world');
   });
 
+  it('does not join visible text from separate block elements into one match', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>foo</p><p>bar</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'foobar';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(document.querySelectorAll('#document mark[data-search-match]')).toHaveLength(0);
+    expect(document.querySelector('#search-count')?.textContent).toBe('0 of 0');
+  });
+
   it('keeps Unicode case-folded matches aligned with the original text', () => {
     const { app } = setup();
     app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>İx</p>' } });
@@ -106,6 +118,18 @@ describe('ReaderApp', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
     expect(document.querySelector('#document mark[data-search-match]')?.textContent).toBe('x');
+    expect(document.querySelector('#search-count')?.textContent).toBe('1 of 1');
+  });
+
+  it('matches Unicode characters whose lowercase form depends on surrounding text', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>ΟΣ</p>' } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'ος';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(document.querySelector('#document mark[data-search-match]')?.textContent).toBe('ΟΣ');
     expect(document.querySelector('#search-count')?.textContent).toBe('1 of 1');
   });
 

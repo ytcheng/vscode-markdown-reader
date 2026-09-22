@@ -396,6 +396,9 @@ export class ReaderApp {
     const nodeRanges: Array<{ node: Text; start: number; end: number }> = [];
     let documentText = '';
     for (const node of textNodes) {
+      if (nodeRanges.length > 0 && this.#searchBlockContainer(nodeRanges.at(-1)!.node) !== this.#searchBlockContainer(node)) {
+        documentText += '\n';
+      }
       const start = documentText.length;
       documentText += node.textContent ?? '';
       nodeRanges.push({ node, start, end: documentText.length });
@@ -460,20 +463,23 @@ export class ReaderApp {
   }
 
   #caseFold(value: string): { text: string; starts: number[]; ends: number[] } {
-    let text = '';
+    const text = value.toLowerCase();
     const starts: number[] = [];
     const ends: number[] = [];
     for (let index = 0; index < value.length;) {
       const character = String.fromCodePoint(value.codePointAt(index)!);
-      const folded = character.toLowerCase();
-      text += folded;
-      for (let foldedIndex = 0; foldedIndex < folded.length; foldedIndex++) {
+      const foldedLength = character.toLowerCase().length;
+      for (let foldedIndex = 0; foldedIndex < foldedLength; foldedIndex++) {
         starts.push(index);
         ends.push(index + character.length);
       }
       index += character.length;
     }
     return { text, starts, ends };
+  }
+
+  #searchBlockContainer(node: Text): Element | undefined {
+    return node.parentElement?.closest('blockquote, h1, h2, h3, h4, h5, h6, li, p, pre, td, th') ?? undefined;
   }
 
   #updateSearchControls(): void {
