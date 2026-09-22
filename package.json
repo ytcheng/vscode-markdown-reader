@@ -1,5 +1,5 @@
 {
-  "name": "markdown-reader",
+  "name": "vscode-markdown-reader",
   "displayName": "Markdown Reader",
   "description": "Open Markdown as a polished reading view in the current VS Code tab.",
   "version": "0.1.0",
