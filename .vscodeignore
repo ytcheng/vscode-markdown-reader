@@ -16,3 +16,5 @@ tsconfig.json
 vitest.config.ts
 playwright.config.ts
 esbuild.mjs
+
+.playwright-cli/

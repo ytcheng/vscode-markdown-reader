@@ -508,3 +508,53 @@ body.vscode-light .markdown-body code {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+// V0.2: heading actions, collapsible TOC, diagrams and math.
+.markdown-body .heading-actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+  opacity: 0;
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px 5px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-muted);
+    background: transparent;
+    font: 12px/1.4 sans-serif;
+    cursor: pointer;
+  }
+}
+.markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-actions,
+.markdown-body .heading-actions:focus-within { opacity: 1; }
+.toc li, .toc-drawer li { position: relative; }
+.toc li > a, .toc-drawer li > a { padding-left: 20px; }
+.toc-branch-toggle {
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.toc [hidden], .toc-drawer [hidden], .markdown-body [hidden] { display: none !important; }
+.markdown-body figure[data-mermaid] { margin: 1.5em 0; overflow-x: auto; text-align: center; }
+.markdown-body .mermaid-diagram { max-width: 100%; height: auto; background: white; }
+.markdown-body .mermaid-error { color: var(--danger-color); font-size: 0.9em; }
+.mermaid-staging { position: absolute; left: -100000px; top: 0; width: 900px; visibility: hidden; }
+.markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }
+body.vscode-high-contrast .markdown-body .hljs span,
+body.vscode-high-contrast-light .markdown-body .hljs span { color: inherit !important; }
+
+.heading-actions button[data-copy-state="copied"] { color: var(--success-color); }
+.heading-actions button[data-copy-state="failed"] { color: var(--danger-color); }

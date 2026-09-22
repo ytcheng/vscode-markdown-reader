@@ -471,6 +471,13 @@ Webview 使用最小权限和严格 CSP：
 `markdown-it` 表格对齐等默认产生 inline style 的渲染规则必须改写为 class，再由本地
 CSS 定义样式，不能为了兼容它而放宽 `style-src`。
 
+V0.2 的 Mermaid 兼容例外：VS Code 不支持将 Webview 资源 URL 直接作为嵌套图表页面
+导航，改用 `srcdoc` 与 `sandbox="allow-scripts"`。由于 `srcdoc` 继承父 CSP，
+父页面 `style-src` 允许 Mermaid 必需的内联样式；正文渲染规则仍输出 class。
+脚本仅允许扩展资源和随机 nonce 授权代码，不启用 `unsafe-inline` 或 `unsafe-eval`。
+父页面读取扩展本地 bundle，经来源校验的消息交给子页面；子页面 CSP 禁止网络连接，
+不授予同源权限或 VS Code API，图表结果仅以不可执行的 SVG 图片显示。
+
 V0.1：
 
     markdown-it html = false

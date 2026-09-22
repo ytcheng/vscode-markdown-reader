@@ -3,6 +3,7 @@ import { runTests } from '@vscode/test-electron';
 
 void runTests({
   version: '1.100.0',
+  vscodeExecutablePath: process.env.VSCODE_TEST_EXECUTABLE,
   extensionDevelopmentPath: path.resolve(__dirname, '../../'),
   extensionTestsPath: path.resolve(__dirname, 'suite/index.js'),
   launchArgs: [path.resolve(__dirname, '../../test/fixtures'), '--disable-extensions']

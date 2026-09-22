@@ -6,3 +6,6 @@ test-results
 release/
 *.vsix
 .worktrees/
+
+output/playwright/
+.playwright-cli/

@@ -9,6 +9,7 @@ const vscode = vi.hoisted(() => {
   return {
   __state: state,
   workspace: {
+    fs: { readFile: vi.fn(async () => Buffer.from('<!doctype html><html></html>')) },
     onDidChangeTextDocument: vi.fn((handler: (event: { document: unknown }) => void) => {
       state.changeTextDocument = handler;
       return { dispose: vi.fn() };
@@ -30,7 +31,10 @@ const vscode = vi.hoisted(() => {
   Uri: { joinPath: vi.fn(() => ({ toString: () => 'webview-resource' })) },
   RelativePattern: vi.fn(),
   Disposable: { from: vi.fn((...disposables: Array<{ dispose: () => void }>) => ({ dispose: () => disposables.forEach((disposable) => disposable.dispose()) })) },
-  window: { activeTextEditor: undefined },
+  window: { activeTextEditor: undefined, showTextDocument: vi.fn() },
+  Position: class { constructor(public line: number, public character: number) {} },
+  Selection: class { constructor(public start: unknown, public end: unknown) {} },
+  TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
   commands: { executeCommand: vi.fn() },
   env: { openExternal: vi.fn() },
   ConfigurationTarget: { Global: true }
@@ -195,4 +199,26 @@ describe('MarkdownEditorProvider', () => {
     }));
     vi.useRealTimers();
   });
+});
+
+
+it('opens source in the originating editor group and clamps the requested line', async () => {
+  let receive: (message: unknown) => void = () => undefined;
+  const uri = { toString: () => 'file:///position.md' };
+  const doc = { uri, getText: () => '# heading', lineCount: 4 };
+  const editor = { revealRange: vi.fn() };
+  vscode.workspace.openTextDocument.mockResolvedValue(doc);
+  vscode.window.showTextDocument.mockResolvedValue(editor);
+  const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+  const panel = {
+    active: true, viewColumn: 2,
+    webview: { cspSource: 'vscode-webview:', asWebviewUri: () => ({ toString: () => 'resource' }), postMessage: vi.fn(async () => true), onDidReceiveMessage: (handler: typeof receive) => { receive = handler; } },
+    onDidDispose: vi.fn(), onDidChangeViewState: vi.fn()
+  };
+  await provider.resolveCustomTextEditor(doc as never, panel as never);
+  receive({ type: 'openSource', line: 999 });
+  await vi.waitFor(() => expect(vscode.window.showTextDocument).toHaveBeenCalledWith(doc, expect.objectContaining({
+    viewColumn: 2, preview: false, selection: expect.objectContaining({ start: expect.objectContaining({ line: 3, character: 0 }) })
+  })));
+  expect(editor.revealRange).toHaveBeenCalled();
 });

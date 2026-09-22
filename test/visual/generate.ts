@@ -5,14 +5,11 @@ import { MarkdownRenderer } from '../../src/renderer/MarkdownRenderer.js';
 async function generate(): Promise<void> {
   const root = path.resolve(__dirname, '../../..');
   const source = await readFile(path.join(root, 'test/fixtures/kitchen-sink.md'), 'utf8');
-  const rendered = new MarkdownRenderer().render(source, 1);
-  const output = `<article class="markdown-body">${rendered.html}</article>`;
+  const rendered = await new MarkdownRenderer().render(source, 1);
+  const output = `<!doctype html><html><head><link rel="stylesheet" href="../../media/reader.css"><style>${rendered.styles ?? ''}</style></head><body class="vscode-light"><article id="document" class="markdown-body">${rendered.html}</article></body></html>`;
   await mkdir(path.join(root, 'test/visual'), { recursive: true });
-  for (const file of ['reference.html', 'candidate.html']) {
-    const target = path.join(root, 'test/visual', file);
-    const template = await readFile(target, 'utf8');
-    await writeFile(target, template.replace('<!-- CONTENT -->', output));
-  }
+  // Preserve the committed baseline; only regenerate the current candidate.
+  await writeFile(path.join(root, 'test/visual/candidate.html'), output);
 }
 
 void generate().catch((error: unknown) => {

@@ -10,6 +10,10 @@ export class NavigationCoordinator {
     this.#activePanels.set(uri, panel);
   }
 
+  remove(uri: string, panel: NavigationPanel): void {
+    if (this.#activePanels.get(uri) === panel) this.#activePanels.delete(uri);
+  }
+
   navigate(uri: string, slug: string | undefined): void {
     if (!slug) return;
     const panel = this.#activePanels.get(uri);

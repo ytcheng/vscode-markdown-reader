@@ -14,6 +14,7 @@ export interface RenderResource {
 export interface RenderResult {
   revision: number;
   html: string;
+  styles?: string;
   headings: HeadingItem[];
   resources: RenderResource[];
 }

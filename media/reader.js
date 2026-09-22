@@ -1,5 +1,143 @@
 "use strict";
 (() => {
+  // src/webview/MermaidFrame.ts
+  var MermaidFrame = class {
+    constructor(document2) {
+      this.document = document2;
+    }
+    document;
+    #frame;
+    #ready;
+    #finishReady;
+    #loading = false;
+    #failure;
+    #pending = /* @__PURE__ */ new Map();
+    async render(id, source) {
+      if (this.#failure) throw this.#failure;
+      if (!this.#ready) {
+        const uri = this.document.body.dataset.mermaidFrameUri;
+        if (!uri) throw new Error("Missing Mermaid renderer");
+        this.#ready = new Promise((resolve) => {
+          this.#finishReady = resolve;
+        });
+        this.document.defaultView.addEventListener("message", this.#onMessage);
+        const frame = this.document.createElement("iframe");
+        frame.className = "mermaid-staging";
+        frame.title = "Diagram renderer";
+        frame.setAttribute("aria-hidden", "true");
+        frame.setAttribute("sandbox", "allow-scripts");
+        const nonce = this.document.querySelector("#render-styles")?.nonce ?? "";
+        frame.srcdoc = this.document.defaultView.atob(uri.slice(uri.indexOf(",") + 1)).replaceAll("MERMAID_NONCE", nonce);
+        this.#frame = frame;
+        this.document.body.append(frame);
+      }
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.#fail(new Error("Diagram rendering timed out"));
+        }, 3e4);
+        this.#pending.set(id, { resolve, reject, timer });
+        void this.#ready.then(() => {
+          if (this.#pending.has(id)) this.#frame?.contentWindow?.postMessage({ type: "renderMermaid", id, source }, "*");
+        });
+      });
+    }
+    #onMessage = (event) => {
+      if (event.source !== this.#frame?.contentWindow) return;
+      const message = event.data;
+      if (message?.type === "mermaidBootstrapReady" && !this.#loading) {
+        this.#loading = true;
+        void this.#loadScript().catch(() => this.#fail(new Error("Unable to load the Mermaid renderer")));
+        return;
+      }
+      if (message?.type === "mermaidInitError") {
+        this.#fail(new Error("Unable to start the Mermaid renderer"));
+        return;
+      }
+      if (message?.type === "mermaidReady") {
+        this.#finishReady?.();
+        return;
+      }
+      if (message?.type !== "mermaidResult" || typeof message.id !== "string") return;
+      const pending = this.#pending.get(message.id);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      this.#pending.delete(message.id);
+      if (typeof message.svg === "string") pending.resolve({ svg: message.svg });
+      else pending.reject(new Error("Diagram rendering failed"));
+    };
+    async #loadScript() {
+      const uri = this.document.body.dataset.mermaidScriptUri;
+      if (!uri) throw new Error("Missing Mermaid script");
+      const response = await this.document.defaultView.fetch(uri);
+      if (!response.ok) throw new Error("Unable to read Mermaid script");
+      const script = await response.text();
+      if (!this.#failure) this.#frame?.contentWindow?.postMessage({ type: "initMermaid", script }, "*");
+    }
+    #fail(error) {
+      this.#failure = error;
+      for (const pending of this.#pending.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(error);
+      }
+      this.#pending.clear();
+    }
+    dispose() {
+      this.document.defaultView.removeEventListener("message", this.#onMessage);
+      this.#fail(new Error("Diagram renderer disposed"));
+      this.#frame?.remove();
+    }
+  };
+
+  // src/webview/MermaidRenderer.ts
+  var sequence = 0;
+  var MermaidRenderer = class {
+    constructor(renderDiagram) {
+      this.renderDiagram = renderDiagram;
+    }
+    renderDiagram;
+    #frame;
+    dispose() {
+      this.#frame?.dispose();
+    }
+    async render(article) {
+      for (const figure of article.querySelectorAll("[data-mermaid]")) {
+        const code = figure.querySelector("code");
+        if (!code || !figure.isConnected) continue;
+        const document2 = article.ownerDocument;
+        const staging = document2.createElement("div");
+        staging.className = "mermaid-staging";
+        staging.setAttribute("aria-hidden", "true");
+        document2.body.append(staging);
+        try {
+          const render = this.renderDiagram ?? ((id, source) => (this.#frame ??= new MermaidFrame(document2)).render(id, source));
+          if (!figure.isConnected) continue;
+          const { svg } = await render(`reader-mermaid-${++sequence}`, code.textContent ?? "", staging);
+          if (!figure.isConnected) continue;
+          const image = document2.createElement("img");
+          image.className = "mermaid-diagram";
+          image.alt = "Mermaid diagram";
+          const viewBox = svg.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)?.[1].trim().split(/[\s,]+/).map(Number);
+          if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {
+            image.width = Math.ceil(viewBox[2]);
+            image.height = Math.ceil(viewBox[3]);
+          }
+          image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+          figure.append(image);
+          figure.querySelector("pre").hidden = true;
+        } catch {
+          if (!figure.isConnected) continue;
+          const error = document2.createElement("p");
+          error.className = "mermaid-error";
+          error.setAttribute("role", "status");
+          error.textContent = "Unable to render Mermaid diagram. Check the source syntax.";
+          figure.append(error);
+        } finally {
+          staging.remove();
+        }
+      }
+    }
+  };
+
   // src/webview/ReaderApp.ts
   var ReaderApp = class {
     constructor(document2, api) {
@@ -9,11 +147,14 @@
     document;
     api;
     #revision = -1;
+    #mermaid = new MermaidRenderer();
     #activeSlug;
     #tocVisible = true;
+    #collapsedSlugs = /* @__PURE__ */ new Set();
     #tocMaxDepth = 3;
     #tocWidth = 260;
     #headings = [];
+    #headingElements = /* @__PURE__ */ new Map();
     #observer;
     #visibleHeadings = /* @__PURE__ */ new Map();
     #pendingNavigationSlug;
@@ -29,6 +170,7 @@
       this.#started = true;
       this.window.addEventListener("message", this.#onMessage);
       this.document.addEventListener("click", this.#onClick);
+      this.document.addEventListener("dblclick", this.#onDoubleClick);
       this.document.addEventListener("scrollend", this.#onScrollEnd);
       this.window.addEventListener("keydown", this.#onKeyDown);
       this.window.addEventListener("scroll", this.#onScroll, { passive: true });
@@ -50,6 +192,7 @@
         case "setTocVisible":
           this.#tocVisible = message.visible;
           this.#applyTocVisibility();
+          this.#saveViewport();
           return;
         case "setLayout":
           this.#tocMaxDepth = Math.max(1, Math.min(6, message.tocMaxDepth));
@@ -66,32 +209,48 @@
     }
     applyRender(result, restore) {
       if (result.revision <= this.#revision) return;
+      restore ??= this.#revision < 0 ? this.api.getState() : this.captureViewport();
       this.#clearSearchMatches();
       this.#updateSearchControls();
       this.#revision = result.revision;
       this.#headings = result.headings;
       this.article.innerHTML = result.html;
+      this.#headingElements.clear();
+      for (const heading of this.article.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]")) {
+        this.#headingElements.set(heading.id, heading);
+      }
+      const styles = this.document.getElementById("render-styles");
+      if (styles) styles.textContent = result.styles ?? "";
+      this.#addHeadingActions();
       if (restore) {
         this.#tocVisible = restore.tocVisible;
+        this.#collapsedSlugs = new Set(restore.collapsedSlugs.filter((slug) => this.#headings.some((heading) => heading.slug === slug)));
       }
       this.#renderToc();
       this.#observeHeadings();
       this.#applyTocVisibility();
       this.#restoreViewport(restore);
+      const revision = this.#revision;
+      const scrollTop = this.#scrollTop();
+      void this.#mermaid.render(this.article).then(() => {
+        if (revision !== this.#revision || this.#scrollTop() !== scrollTop) return;
+        this.#restoreViewport(restore);
+      });
     }
     captureViewport() {
-      const activeHeading = this.#activeSlug ? this.document.getElementById(this.#activeSlug) : void 0;
+      const activeHeading = this.#activeSlug ? this.#headingElements.get(this.#activeSlug) : void 0;
       return {
         activeSlug: this.#activeSlug,
         activeHeadingOffset: activeHeading?.getBoundingClientRect().top,
         scrollTop: this.#scrollTop(),
         tocVisible: this.#tocVisible,
-        collapsedSlugs: []
+        collapsedSlugs: [...this.#collapsedSlugs]
       };
     }
     dispose() {
       this.window.removeEventListener("message", this.#onMessage);
       this.document.removeEventListener("click", this.#onClick);
+      this.document.removeEventListener("dblclick", this.#onDoubleClick);
       this.document.removeEventListener("scrollend", this.#onScrollEnd);
       this.window.removeEventListener("keydown", this.#onKeyDown);
       this.window.removeEventListener("scroll", this.#onScroll);
@@ -104,6 +263,7 @@
       this.window.removeEventListener("pointermove", this.#onResizerPointerMove);
       this.window.removeEventListener("pointerup", this.#onResizerPointerUp);
       this.#observer?.disconnect();
+      this.#mermaid.dispose();
       if (this.#scrollFrame !== void 0) this.window.cancelAnimationFrame(this.#scrollFrame);
       this.#started = false;
     }
@@ -121,11 +281,68 @@
       return element;
     }
     #onMessage = (event) => {
+      if (event.origin !== this.window.location.origin) return;
+      if ([...this.document.querySelectorAll("iframe")].some((frame) => frame.contentWindow === event.source)) return;
       this.handleMessage(event.data);
+    };
+    #addHeadingActions() {
+      for (const heading of this.#headings) {
+        const element = this.#headingElements.get(heading.slug);
+        if (!element || !this.article.contains(element)) continue;
+        const actions = this.document.createElement("span");
+        actions.className = "heading-actions";
+        for (const [attribute, label, text] of [
+          ["data-edit-heading", "Edit heading in source", ""],
+          ["data-copy-heading", "Copy Heading Link", "#"]
+        ]) {
+          const button = this.document.createElement("button");
+          button.type = "button";
+          button.setAttribute(attribute, heading.slug);
+          button.setAttribute("aria-label", label);
+          button.title = label;
+          button.textContent = text;
+          if (attribute === "data-edit-heading") {
+            button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 5l4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z"/></svg>';
+          }
+          actions.append(button);
+        }
+        element.append(actions);
+      }
+    }
+    #onDoubleClick = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !this.article.contains(target)) return;
+      if (target.closest("a, button, input, textarea, select, [contenteditable]")) return;
+      const block = target.closest("[data-source-line]");
+      if (!block || !this.article.contains(block)) return;
+      const line = Number(block.dataset.sourceLine);
+      if (Number.isSafeInteger(line) && line >= 0) this.api.postMessage({ type: "openSource", line });
     };
     #onClick = (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      const branch = target.closest("[data-toggle-branch]");
+      if (branch) {
+        const slug = branch.dataset.toggleBranch;
+        const container = target.closest("#toc-drawer") ? this.drawer : this.toc;
+        if (this.#collapsedSlugs.has(slug)) this.#collapsedSlugs.delete(slug);
+        else if (this.#collapsedSlugs.size < 200) this.#collapsedSlugs.add(slug);
+        this.#renderToc();
+        this.#saveViewport();
+        [...container.querySelectorAll("[data-toggle-branch]")].find((button) => button.dataset.toggleBranch === slug)?.focus();
+        return;
+      }
+      const edit = target.closest("[data-edit-heading]");
+      if (edit) {
+        const heading = this.#headings.find((item) => item.slug === edit.dataset.editHeading);
+        if (heading) this.api.postMessage({ type: "openSource", line: heading.line });
+        return;
+      }
+      const copyHeading = target.closest("[data-copy-heading]");
+      if (copyHeading) {
+        void this.#copyCode(copyHeading, `#${encodeURIComponent(copyHeading.dataset.copyHeading)}`);
+        return;
+      }
       if (target.closest("#open-source")) {
         this.api.postMessage({ type: "openSource" });
         return;
@@ -312,6 +529,16 @@
         item.append(link);
         if (node.children.length > 0) {
           const childList = this.#createTocList(node.children);
+          const toggle = this.document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "toc-branch-toggle";
+          toggle.dataset.toggleBranch = node.heading.slug;
+          const collapsed = this.#collapsedSlugs.has(node.heading.slug);
+          toggle.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${node.heading.text || "Untitled section"}`);
+          toggle.setAttribute("aria-expanded", String(!collapsed));
+          toggle.textContent = collapsed ? "\u25B8" : "\u25BE";
+          childList.hidden = collapsed;
+          item.prepend(toggle);
           item.append(childList);
         }
         list.append(item);
@@ -340,7 +567,7 @@
       });
       this.#observer = observer;
       for (const heading of this.#headings) {
-        const element = this.document.getElementById(heading.slug);
+        const element = this.#headingElements.get(heading.slug);
         if (element) observer.observe(element);
       }
     }
@@ -374,7 +601,7 @@
       }
       const textNodes = [];
       const walker = this.document.createTreeWalker(this.article, NodeFilter.SHOW_TEXT, {
-        acceptNode: (node) => node.textContent && !node.parentElement?.closest("mark[data-search-match]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+        acceptNode: (node) => node.textContent && !node.parentElement?.closest("mark[data-search-match], button, .katex, [data-mermaid]") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
       });
       for (let node = walker.nextNode(); node; node = walker.nextNode()) textNodes.push(node);
       const nodeRanges = [];
@@ -464,14 +691,14 @@
       this.searchNextButton.disabled = count === 0;
     }
     #navigateTo(slug) {
-      if (!this.document.getElementById(slug)) return;
+      if (!this.#headingElements.get(slug)) return;
       this.#pendingNavigationSlug = slug;
       this.#setActiveSlug(slug);
       this.#scrollToHeading(slug);
       this.#saveViewport();
     }
     #scrollToHeading(slug, offset = 0) {
-      const heading = this.document.getElementById(slug);
+      const heading = this.#headingElements.get(slug);
       if (!heading) return false;
       const reducedMotion = this.window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
       heading.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });

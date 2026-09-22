@@ -407,7 +407,7 @@ describe('ReaderApp', () => {
     expect(document.documentElement.scrollTop).toBe(900);
   });
 
-  it('always exposes nested TOC entries without collapse controls', () => {
+  it('restores collapsed nested TOC entries', () => {
     const { app } = setup();
     app.handleMessage({
       type: 'render',
@@ -415,8 +415,8 @@ describe('ReaderApp', () => {
       restore: { scrollTop: 0, tocVisible: true, collapsedSlugs: ['one'] }
     });
 
-    expect(document.querySelectorAll('#toc button[data-slug]')).toHaveLength(0);
-    expect((document.querySelector('#toc ol ol') as HTMLElement).hidden).toBe(false);
+    expect(document.querySelectorAll('#toc button[data-toggle-branch]')).toHaveLength(1);
+    expect((document.querySelector('#toc ol ol') as HTMLElement).hidden).toBe(true);
   });
 
   it('closes the narrow drawer with Escape and restores trigger focus', () => {
@@ -441,4 +441,109 @@ describe('ReaderApp', () => {
     expect(scrollIntoView).toHaveBeenCalled();
     expect(postMessage).toHaveBeenCalledWith({ type: 'ready' });
   });
+});
+
+
+describe('V0.2 reading interactions', () => {
+  it('double-clicks the closest body source block but ignores links and controls', () => {
+    const { app, postMessage } = setup();
+    app.applyRender({ ...renderResult(), html: '<blockquote data-source-line="2"><p data-source-line="3"><em>text</em><a href="#one">link</a><button>control</button></p></blockquote>' });
+    document.querySelector('#document em')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    expect(postMessage).toHaveBeenLastCalledWith({ type: 'openSource', line: 3 });
+    postMessage.mockClear();
+    for (const selector of ['a', 'button']) document.querySelector(`#document ${selector}`)!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it('adds accessible heading actions that edit the heading and copy its encoded fragment', async () => {
+    const { app, postMessage } = setup();
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    app.applyRender({ ...renderResult(), html: '<h2 id="中文" data-source-line="7">中文</h2>', headings: [{ level: 2, text: '中文', slug: '中文', line: 7 }] });
+    document.querySelector<HTMLButtonElement>('[data-edit-heading]')?.click();
+    expect(postMessage).toHaveBeenLastCalledWith({ type: 'openSource', line: 7 });
+    document.querySelector<HTMLButtonElement>('[data-copy-heading]')?.click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('#%E4%B8%AD%E6%96%87'));
+    expect(document.querySelector('#toc')?.textContent).toBe('中文');
+  });
+
+  it('persists visibility immediately and restores TOC branches across renders', () => {
+    const { app, setState } = setup();
+    app.applyRender(renderResult(), { tocVisible: false, collapsedSlugs: ['one'], scrollTop: 0 });
+    expect(document.querySelector('#toc ol ol')?.hasAttribute('hidden')).toBe(true);
+    expect(app.captureViewport().collapsedSlugs).toEqual(['one']);
+    app.handleMessage({ type: 'setTocVisible', visible: true });
+    expect(setState).toHaveBeenLastCalledWith(expect.objectContaining({ tocVisible: true, collapsedSlugs: ['one'] }));
+    document.querySelector<HTMLButtonElement>('[data-toggle-branch]')?.click();
+    expect(app.captureViewport().collapsedSlugs).toEqual([]);
+  });
+});
+
+
+it('keeps keyboard focus in the narrow TOC drawer after toggling a branch', () => {
+  const { app } = setup();
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 600 });
+  app.applyRender(renderResult());
+  document.querySelector<HTMLButtonElement>('#toggle-toc')!.click();
+  const button = document.querySelector<HTMLButtonElement>('#toc-drawer [data-toggle-branch]')!;
+  button.focus();
+  button.click();
+  expect(document.activeElement).toBe(document.querySelector('#toc-drawer [data-toggle-branch]'));
+});
+
+
+it('rejects render messages sent by a child iframe', () => {
+  const { app } = setup();
+  app.applyRender(renderResult());
+  const frame = document.createElement('iframe');
+  document.body.append(frame);
+  window.dispatchEvent(new MessageEvent('message', {
+    source: frame.contentWindow,
+    data: { type: 'render', result: { ...renderResult(999), html: '<p>forged</p>' } }
+  }));
+  expect(document.querySelector('#document')?.textContent).not.toContain('forged');
+});
+
+
+it('keeps heading actions and anchors scoped to the article when slugs match shell IDs', () => {
+  const { app, postMessage } = setup();
+  app.applyRender({ ...renderResult(), html: '<h2 id="document" data-source-line="8">Document</h2>', headings: [{ level: 2, text: 'Document', slug: 'document', line: 8 }] });
+  const heading = document.querySelector('#document h2')!;
+  heading.querySelector<HTMLButtonElement>('[data-edit-heading]')?.click();
+  expect(postMessage).toHaveBeenLastCalledWith({ type: 'openSource', line: 8 });
+  app.handleMessage({ type: 'navigateToAnchor', slug: 'document' });
+  expect(scrollIntoView.mock.instances.at(-1)).toBe(heading);
+});
+
+
+it('accepts same-origin VS Code host messages after VS Code masks window.parent', () => {
+  setup();
+  // The VS Code bootstrap replaces window.parent with window. The real host
+  // WindowProxy still appears as event.source and does not equal either one.
+  expect(window.parent).toBe(window);
+  const hostWindow = {} as Window;
+  window.dispatchEvent(new MessageEvent('message', {
+    source: hostWindow,
+    origin: window.location.origin,
+    data: { type: 'render', result: renderResult() }
+  }));
+  expect(document.querySelector('#document h1')?.textContent).toContain('One');
+});
+
+it('rejects cross-origin messages and same-origin messages from embedded frames', () => {
+  const { app } = setup();
+  app.applyRender(renderResult());
+  window.dispatchEvent(new MessageEvent('message', {
+    source: {} as Window,
+    origin: 'https://untrusted.example',
+    data: { type: 'render', result: { ...renderResult(998), html: '<p>forged</p>' } }
+  }));
+  const frame = document.createElement('iframe');
+  document.body.append(frame);
+  window.dispatchEvent(new MessageEvent('message', {
+    source: frame.contentWindow,
+    origin: window.location.origin,
+    data: { type: 'render', result: { ...renderResult(999), html: '<p>forged</p>' } }
+  }));
+  expect(document.querySelector('#document')?.textContent).not.toContain('forged');
 });

@@ -1,5 +1,9 @@
 export interface WebviewHtmlOptions {
   cspSource: string;
+  nonce?: string;
+  mermaidFrameUri?: string;
+  mermaidScriptUri?: string;
+  katexStyleUri?: string;
   scriptUri: string;
   styleUri: string;
   highContrastStyleUri: string;
@@ -11,12 +15,14 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${options.cspSource} https: data:; style-src ${options.cspSource}; script-src ${options.cspSource};">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${options.cspSource} https: data:; frame-src 'self'; connect-src ${options.cspSource}; font-src ${options.cspSource}; style-src ${options.cspSource} 'unsafe-inline'; script-src ${options.cspSource}${options.nonce ? ` 'nonce-${options.nonce}'` : ''};">
   <link rel="stylesheet" href="${options.styleUri}">
   <link rel="stylesheet" href="${options.highContrastStyleUri}">
+  ${options.katexStyleUri ? `<link rel="stylesheet" href="${options.katexStyleUri}">` : ''}
+  <style id="render-styles" nonce="${options.nonce ?? ''}"></style>
   <script defer src="${options.scriptUri}"></script>
 </head>
-<body class="vscode-light">
+<body class="vscode-light" data-mermaid-frame-uri="${options.mermaidFrameUri ?? ''}" data-mermaid-script-uri="${options.mermaidScriptUri ?? ''}">
   <div class="reader">
     <nav id="toc" class="toc" aria-label="Table of contents"></nav>
     <div id="toc-resizer" class="toc-resizer" role="separator" aria-label="Resize table of contents" aria-orientation="vertical"></div>

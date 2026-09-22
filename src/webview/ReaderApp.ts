@@ -1,3 +1,4 @@
+import { MermaidRenderer } from './MermaidRenderer.js';
 import type { HeadingItem, RenderResult } from '../renderer/types.js';
 import type { ExtensionToWebviewMessage, ViewportState, WebviewToExtensionMessage } from './messages.js';
 
@@ -18,11 +19,14 @@ export interface VsCodeApi {
 
 export class ReaderApp {
   #revision = -1;
+  readonly #mermaid = new MermaidRenderer();
   #activeSlug: string | undefined;
   #tocVisible = true;
+  #collapsedSlugs = new Set<string>();
   #tocMaxDepth = 3;
   #tocWidth = 260;
   #headings: HeadingItem[] = [];
+  readonly #headingElements = new Map<string, HTMLElement>();
   #observer: IntersectionObserver | undefined;
   #visibleHeadings = new Map<string, number>();
   #pendingNavigationSlug: string | undefined;
@@ -44,6 +48,7 @@ export class ReaderApp {
     this.#started = true;
     this.window.addEventListener('message', this.#onMessage);
     this.document.addEventListener('click', this.#onClick);
+    this.document.addEventListener('dblclick', this.#onDoubleClick);
     this.document.addEventListener('scrollend', this.#onScrollEnd);
     this.window.addEventListener('keydown', this.#onKeyDown);
     this.window.addEventListener('scroll', this.#onScroll, { passive: true });
@@ -66,6 +71,7 @@ export class ReaderApp {
       case 'setTocVisible':
         this.#tocVisible = message.visible;
         this.#applyTocVisibility();
+        this.#saveViewport();
         return;
       case 'setLayout':
         this.#tocMaxDepth = Math.max(1, Math.min(6, message.tocMaxDepth));
@@ -83,36 +89,52 @@ export class ReaderApp {
 
   applyRender(result: RenderResult, restore?: ViewportState): void {
     if (result.revision <= this.#revision) return;
+    restore ??= this.#revision < 0 ? this.api.getState() : this.captureViewport();
     this.#clearSearchMatches();
     this.#updateSearchControls();
     this.#revision = result.revision;
     this.#headings = result.headings;
     this.article.innerHTML = result.html;
+    this.#headingElements.clear();
+    for (const heading of this.article.querySelectorAll<HTMLElement>('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]')) {
+      this.#headingElements.set(heading.id, heading);
+    }
+    const styles = this.document.getElementById('render-styles');
+    if (styles) styles.textContent = result.styles ?? '';
+    this.#addHeadingActions();
 
     if (restore) {
       this.#tocVisible = restore.tocVisible;
+      this.#collapsedSlugs = new Set(restore.collapsedSlugs.filter((slug) => this.#headings.some((heading) => heading.slug === slug)));
     }
 
     this.#renderToc();
     this.#observeHeadings();
     this.#applyTocVisibility();
     this.#restoreViewport(restore);
+    const revision = this.#revision;
+    const scrollTop = this.#scrollTop();
+    void this.#mermaid.render(this.article).then(() => {
+      if (revision !== this.#revision || this.#scrollTop() !== scrollTop) return;
+      this.#restoreViewport(restore);
+    });
   }
 
   captureViewport(): ViewportState {
-    const activeHeading = this.#activeSlug ? this.document.getElementById(this.#activeSlug) : undefined;
+    const activeHeading = this.#activeSlug ? this.#headingElements.get(this.#activeSlug) : undefined;
     return {
       activeSlug: this.#activeSlug,
       activeHeadingOffset: activeHeading?.getBoundingClientRect().top,
       scrollTop: this.#scrollTop(),
       tocVisible: this.#tocVisible,
-      collapsedSlugs: []
+      collapsedSlugs: [...this.#collapsedSlugs]
     };
   }
 
   dispose(): void {
     this.window.removeEventListener('message', this.#onMessage);
     this.document.removeEventListener('click', this.#onClick);
+    this.document.removeEventListener('dblclick', this.#onDoubleClick);
     this.document.removeEventListener('scrollend', this.#onScrollEnd);
     this.window.removeEventListener('keydown', this.#onKeyDown);
     this.window.removeEventListener('scroll', this.#onScroll);
@@ -125,6 +147,7 @@ export class ReaderApp {
     this.window.removeEventListener('pointermove', this.#onResizerPointerMove);
     this.window.removeEventListener('pointerup', this.#onResizerPointerUp);
     this.#observer?.disconnect();
+    this.#mermaid.dispose();
     if (this.#scrollFrame !== undefined) this.window.cancelAnimationFrame(this.#scrollFrame);
     this.#started = false;
   }
@@ -146,12 +169,75 @@ export class ReaderApp {
   }
 
   #onMessage = (event: MessageEvent<ExtensionToWebviewMessage>): void => {
+    // VS Code masks window.parent as window, but its messages still carry the
+    // real host WindowProxy. Authenticate the host origin instead, and reject
+    // embedded frame senders (including same-origin frames) explicitly.
+    if (event.origin !== this.window.location.origin) return;
+    if ([...this.document.querySelectorAll('iframe')].some((frame) => frame.contentWindow === event.source)) return;
     this.handleMessage(event.data);
+  };
+
+  #addHeadingActions(): void {
+    for (const heading of this.#headings) {
+      const element = this.#headingElements.get(heading.slug);
+      if (!element || !this.article.contains(element)) continue;
+      const actions = this.document.createElement('span');
+      actions.className = 'heading-actions';
+      for (const [attribute, label, text] of [
+        ['data-edit-heading', 'Edit heading in source', ''],
+        ['data-copy-heading', 'Copy Heading Link', '#']
+      ]) {
+        const button = this.document.createElement('button');
+        button.type = 'button';
+        button.setAttribute(attribute, heading.slug);
+        button.setAttribute('aria-label', label);
+        button.title = label;
+        button.textContent = text;
+        if (attribute === 'data-edit-heading') {
+          button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 5l4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z"/></svg>';
+        }
+        actions.append(button);
+      }
+      element.append(actions);
+    }
+  }
+
+  #onDoubleClick = (event: MouseEvent): void => {
+    const target = event.target;
+    if (!(target instanceof Element) || !this.article.contains(target)) return;
+    if (target.closest('a, button, input, textarea, select, [contenteditable]')) return;
+    const block = target.closest<HTMLElement>('[data-source-line]');
+    if (!block || !this.article.contains(block)) return;
+    const line = Number(block.dataset.sourceLine);
+    if (Number.isSafeInteger(line) && line >= 0) this.api.postMessage({ type: 'openSource', line });
   };
 
   #onClick = (event: MouseEvent): void => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const branch = target.closest<HTMLButtonElement>('[data-toggle-branch]');
+    if (branch) {
+      const slug = branch.dataset.toggleBranch!;
+      const container = target.closest('#toc-drawer') ? this.drawer : this.toc;
+      if (this.#collapsedSlugs.has(slug)) this.#collapsedSlugs.delete(slug);
+      else if (this.#collapsedSlugs.size < 200) this.#collapsedSlugs.add(slug);
+      this.#renderToc();
+      this.#saveViewport();
+      [...container.querySelectorAll<HTMLButtonElement>('[data-toggle-branch]')].find((button) => button.dataset.toggleBranch === slug)?.focus();
+      return;
+    }
+    const edit = target.closest<HTMLButtonElement>('[data-edit-heading]');
+    if (edit) {
+      const heading = this.#headings.find((item) => item.slug === edit.dataset.editHeading);
+      if (heading) this.api.postMessage({ type: 'openSource', line: heading.line });
+      return;
+    }
+    const copyHeading = target.closest<HTMLButtonElement>('[data-copy-heading]');
+    if (copyHeading) {
+      void this.#copyCode(copyHeading, `#${encodeURIComponent(copyHeading.dataset.copyHeading!)}`);
+      return;
+    }
 
     if (target.closest('#open-source')) {
       this.api.postMessage({ type: 'openSource' });
@@ -367,6 +453,16 @@ export class ReaderApp {
 
       if (node.children.length > 0) {
         const childList = this.#createTocList(node.children);
+        const toggle = this.document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'toc-branch-toggle';
+        toggle.dataset.toggleBranch = node.heading.slug;
+        const collapsed = this.#collapsedSlugs.has(node.heading.slug);
+        toggle.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${node.heading.text || 'Untitled section'}`);
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.textContent = collapsed ? '▸' : '▾';
+        childList.hidden = collapsed;
+        item.prepend(toggle);
         item.append(childList);
       }
       list.append(item);
@@ -398,7 +494,7 @@ export class ReaderApp {
     this.#observer = observer;
 
     for (const heading of this.#headings) {
-      const element = this.document.getElementById(heading.slug);
+      const element = this.#headingElements.get(heading.slug);
       if (element) observer.observe(element);
     }
   }
@@ -437,7 +533,7 @@ export class ReaderApp {
 
     const textNodes: Text[] = [];
     const walker = this.document.createTreeWalker(this.article, NodeFilter.SHOW_TEXT, {
-      acceptNode: (node) => node.textContent && !node.parentElement?.closest('mark[data-search-match]')
+      acceptNode: (node) => node.textContent && !node.parentElement?.closest('mark[data-search-match], button, .katex, [data-mermaid]')
         ? NodeFilter.FILTER_ACCEPT
         : NodeFilter.FILTER_REJECT
     });
@@ -540,7 +636,7 @@ export class ReaderApp {
   }
 
   #navigateTo(slug: string): void {
-    if (!this.document.getElementById(slug)) return;
+    if (!this.#headingElements.get(slug)) return;
     this.#pendingNavigationSlug = slug;
     this.#setActiveSlug(slug);
     this.#scrollToHeading(slug);
@@ -548,7 +644,7 @@ export class ReaderApp {
   }
 
   #scrollToHeading(slug: string, offset = 0): boolean {
-    const heading = this.document.getElementById(slug);
+    const heading = this.#headingElements.get(slug);
     if (!heading) return false;
     const reducedMotion = this.window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     heading.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
