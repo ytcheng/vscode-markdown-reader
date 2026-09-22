@@ -356,20 +356,89 @@ body.vscode-light .markdown-body code {
   z-index: 1;
   top: 8px;
   right: 8px;
-  min-width: 48px;
-  height: 24px;
-  padding: 0 7px;
-  color: var(--vscode-button-foreground, #f0f0f0);
-  border: 1px solid var(--vscode-button-border, var(--border-color));
-  border-radius: 4px;
-  background: var(--vscode-button-secondaryBackground, rgba(0, 0, 0, 0.2));
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 32px;
+  padding: 0;
+  color: var(--vscode-descriptionForeground, var(--text-muted));
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
-.copy-code-btn:hover {
-  background: var(--vscode-button-secondaryHoverBackground, rgba(0, 0, 0, 0.35));
+.code-language,
+.copy-code-icon,
+.copy-success-icon {
+  grid-area: 1 / 1;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.code-language {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 1;
+}
+
+.copy-code-icon,
+.copy-success-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.hljs-pre:hover .copy-code-btn,
+.copy-code-btn:focus-visible {
+  color: var(--vscode-button-foreground, #f0f0f0);
+  background: var(--vscode-button-secondaryBackground, rgba(0, 0, 0, 0.16));
+}
+
+.hljs-pre:hover .copy-code-icon,
+.copy-code-btn:focus-visible .copy-code-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.hljs-pre:hover .code-language,
+.copy-code-btn:focus-visible .code-language {
+  opacity: 0;
+}
+
+.copy-code-btn[data-copy-state='copied'] {
+  color: var(--vscode-testing-iconPassed, #2fc178);
+}
+
+.copy-code-btn[data-copy-state='copied'] .copy-code-icon,
+.copy-code-btn[data-copy-state='failed'] .copy-code-icon {
+  opacity: 0;
+}
+
+.copy-code-btn[data-copy-state='copied'] .copy-success-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (hover: none) {
+  .copy-code-btn {
+    color: var(--vscode-button-foreground, #f0f0f0);
+    background: var(--vscode-button-secondaryBackground, rgba(0, 0, 0, 0.16));
+  }
+
+  .copy-code-icon {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .code-language {
+    opacity: 0;
+  }
 }
 
 .align-left { text-align: left; }

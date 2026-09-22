@@ -249,6 +249,8 @@ export class ReaderApp {
   #onSearchClose = (): void => this.#closeSearch();
 
   async #copyCode(button: HTMLButtonElement, code: string): Promise<void> {
+    const copyLabel = button.getAttribute('aria-label') ?? 'Copy code';
+
     try {
       if (this.window.navigator.clipboard?.writeText) {
         try {
@@ -259,15 +261,19 @@ export class ReaderApp {
       } else {
         if (!this.#copyWithCommand(code)) throw new Error('Copy command failed');
       }
-      button.textContent = 'Copied';
+      button.dataset.copyState = 'copied';
       button.setAttribute('aria-label', 'Code copied');
       this.window.setTimeout(() => {
-        button.textContent = 'Copy';
-        button.setAttribute('aria-label', 'Copy code');
+        delete button.dataset.copyState;
+        button.setAttribute('aria-label', copyLabel);
       }, 1_500);
     } catch {
-      button.textContent = 'Copy failed';
+      button.dataset.copyState = 'failed';
       button.setAttribute('aria-label', 'Copy failed');
+      this.window.setTimeout(() => {
+        delete button.dataset.copyState;
+        button.setAttribute('aria-label', copyLabel);
+      }, 1_500);
     }
   }
 

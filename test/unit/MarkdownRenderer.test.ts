@@ -55,9 +55,11 @@ describe('MarkdownRenderer', () => {
     expect(result.html).toContain('<pre class="hljs-pre">');
     expect(result.html).toContain('class="copy-code-btn"');
     expect(result.html).toContain('data-copy-code');
-    expect(result.html).toContain('aria-label="Copy code"');
-    expect(result.html).toContain('class="hljs copyable language-ts"');
-    expect(result.html).toContain('lang="ts"');
+    expect(result.html).toContain('data-code-language="ts"');
+    expect(result.html).toContain('aria-label="Copy ts code"');
+    expect(result.html).toContain('<span class="code-language">TS</span>');
+    expect(result.html).toContain('class="copy-code-icon"');
+    expect(result.html).toContain('class="hljs language-ts"');
     expect(result.html).toContain('hljs-keyword');
   });
 

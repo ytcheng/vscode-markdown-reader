@@ -40,10 +40,20 @@ export class MarkdownRenderer {
       const code = language && hljs.getLanguage(language)
         ? hljs.highlight(token.content, { language, ignoreIllegals: true }).value
         : this.#md.utils.escapeHtml(token.content);
-      const languageClass = language ? ` language-${this.#md.utils.escapeHtml(language)}` : '';
-      const languageAttribute = language ? ` lang="${this.#md.utils.escapeHtml(language)}"` : '';
+      const escapedLanguage = this.#md.utils.escapeHtml(language);
+      const languageClass = language ? ` language-${escapedLanguage}` : '';
+      const languageLabel = language === 'typescript' || language === 'ts'
+        ? 'TS'
+        : language === 'javascript' || language === 'js'
+          ? 'JS'
+          : language === 'python' || language === 'py'
+            ? 'PY'
+            : language
+              ? language.toUpperCase()
+              : 'TEXT';
+      const copyLabel = language ? `Copy ${language} code` : 'Copy code';
 
-      return `<pre class="hljs-pre"><button class="copy-code-btn" type="button" data-copy-code aria-label="Copy code">Copy</button><code class="hljs copyable${languageClass}"${languageAttribute}>${code}</code></pre>\n`;
+      return `<pre class="hljs-pre"><button class="copy-code-btn" type="button" data-copy-code data-code-language="${escapedLanguage}" aria-label="${copyLabel}"><span class="code-language">${languageLabel}</span><svg class="copy-code-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="3" width="12" height="12" rx="2"></rect><rect x="3" y="9" width="12" height="12" rx="2"></rect></svg><svg class="copy-success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg></button><code class="hljs${languageClass}">${code}</code></pre>\n`;
     };
   }
 

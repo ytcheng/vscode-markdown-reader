@@ -247,7 +247,7 @@ describe('ReaderApp', () => {
     await Promise.resolve();
 
     expect(writeText).toHaveBeenCalledWith('const answer = 42;');
-    expect(document.querySelector('[data-copy-code]')?.textContent).toBe('Copied');
+    expect(document.querySelector('[data-copy-code]')?.getAttribute('data-copy-state')).toBe('copied');
     expect(document.querySelector('[data-copy-code]')?.getAttribute('aria-label')).toBe('Code copied');
   });
 
@@ -267,7 +267,7 @@ describe('ReaderApp', () => {
     await Promise.resolve();
 
     expect(execCommand).toHaveBeenCalledWith('copy');
-    expect(document.querySelector('[data-copy-code]')?.textContent).toBe('Copied');
+    expect(document.querySelector('[data-copy-code]')?.getAttribute('data-copy-state')).toBe('copied');
   });
 
   it('marks the clicked TOC item as the current location', () => {

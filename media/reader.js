@@ -208,6 +208,7 @@
     #onSearchNext = () => this.#selectSearchMatch(this.#activeSearchMatchIndex + 1);
     #onSearchClose = () => this.#closeSearch();
     async #copyCode(button, code) {
+      const copyLabel = button.getAttribute("aria-label") ?? "Copy code";
       try {
         if (this.window.navigator.clipboard?.writeText) {
           try {
@@ -218,15 +219,19 @@
         } else {
           if (!this.#copyWithCommand(code)) throw new Error("Copy command failed");
         }
-        button.textContent = "Copied";
+        button.dataset.copyState = "copied";
         button.setAttribute("aria-label", "Code copied");
         this.window.setTimeout(() => {
-          button.textContent = "Copy";
-          button.setAttribute("aria-label", "Copy code");
+          delete button.dataset.copyState;
+          button.setAttribute("aria-label", copyLabel);
         }, 1500);
       } catch {
-        button.textContent = "Copy failed";
+        button.dataset.copyState = "failed";
         button.setAttribute("aria-label", "Copy failed");
+        this.window.setTimeout(() => {
+          delete button.dataset.copyState;
+          button.setAttribute("aria-label", copyLabel);
+        }, 1500);
       }
     }
     #copyWithCommand(code) {

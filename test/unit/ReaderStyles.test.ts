@@ -107,5 +107,8 @@ it('positions a compact copy control over highlighted code blocks', async () => 
   const { css } = await less.render(source, { filename: 'media/reader.less' });
 
   expect(css).toMatch(/\.copy-code-btn\s*\{[^}]*position:\s*absolute[^}]*top:\s*8px[^}]*right:\s*8px/s);
-  expect(css).toMatch(/\.copy-code-btn:hover\s*\{[^}]*background:/s);
+  expect(css).toMatch(/\.hljs-pre:hover \.copy-code-btn,[\s\S]*?background:/s);
+  expect(css).toMatch(/\.copy-code-icon\s*\{[^}]*opacity:\s*0/s);
+  expect(css).toMatch(/\.hljs-pre:hover \.copy-code-icon,[\s\S]*?opacity:\s*1/s);
+  expect(css).toMatch(/\.hljs-pre:hover \.code-language,[\s\S]*?opacity:\s*0/s);
 });
