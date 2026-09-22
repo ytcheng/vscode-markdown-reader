@@ -93,3 +93,11 @@ it('keeps the desktop search bar width stable as the match count changes', async
   expect(css).toMatch(/\.search-bar input\s*\{[^}]*flex:\s*1[^}]*width:\s*auto/s);
   expect(css).toMatch(/\.search-count\s*\{[^}]*width:\s*56px/s);
 });
+
+it('uses clear enabled find controls and the editor focus border', async () => {
+  const source = await readFile('media/reader.less', 'utf8');
+  const { css } = await less.render(source, { filename: 'media/reader.less' });
+
+  expect(css).toMatch(/\.search-bar input\s*\{[^}]*border:\s*1px solid var\(--vscode-focusBorder, #007acc\)/s);
+  expect(css).toMatch(/\.search-bar button:not\(:disabled\)\s*\{[^}]*color:\s*#c5c5c5/s);
+});
