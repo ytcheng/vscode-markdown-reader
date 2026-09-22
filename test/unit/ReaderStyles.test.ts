@@ -60,9 +60,8 @@ it('uses a borderless TOC control inside the document, compact navigation, and c
   const { css } = await less.render(source, { filename: 'media/reader.less' });
 
   expect(css).toMatch(/\.toc\s*\{[^}]*padding:\s*20px 4px 20px 4px/s);
-  expect(css).toMatch(/\.toc-toggle\s*\{[^}]*position:\s*fixed[^}]*top:\s*12px[^}]*left:\s*calc\(var\(--reader-toc-width\) \+ 6px\)[^}]*border:\s*0[^}]*background:\s*transparent/s);
-  expect(css).toMatch(/body:has\(\.toc\[hidden\]\) \.toc-toggle\s*\{[^}]*left:\s*6px/s);
-  expect(css).toMatch(/@media \(max-width: 800px\)\s*\{[\s\S]*?\.toc-toggle\s*\{[^}]*left:\s*6px/s);
+  expect(css).toMatch(/\.toc-toggle\s*\{[^}]*position:\s*sticky[^}]*top:\s*12px[^}]*display:\s*block[^}]*margin-left:\s*6px[^}]*margin-bottom:\s*-28px[^}]*border:\s*0[^}]*background:\s*transparent/s);
+  expect(css).not.toContain('left: calc(var(--reader-toc-width) + 6px);');
   expect(css).toMatch(/\.toc-resizer\s*\{[^}]*width:\s*12px[^}]*margin-left:\s*-12px[^}]*cursor:\s*col-resize/s);
   expect(css).toMatch(/\.reader\s*\{[^}]*grid-template-columns:\s*var\(--reader-toc-width\) 0 minmax\(0, 1fr\)/s);
   expect(css).toMatch(/\.toc a\[aria-current='location'\],[\s\S]*?color:\s*#607cd2;[\s\S]*?font-weight:\s*700;[\s\S]*?text-decoration:\s*none;[\s\S]*?outline:\s*none;/s);

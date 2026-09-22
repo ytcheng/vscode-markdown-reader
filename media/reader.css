@@ -210,10 +210,12 @@ body:has(.toc[hidden]) .toc-resizer {
   display: none;
 }
 .toc-toggle {
-  position: fixed;
+  position: sticky;
   z-index: 5;
   top: 12px;
-  left: calc(var(--reader-toc-width) + 6px);
+  display: block;
+  margin-left: 6px;
+  margin-bottom: -28px;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -222,9 +224,6 @@ body:has(.toc[hidden]) .toc-resizer {
   background: transparent;
   cursor: pointer;
   line-height: 1;
-}
-body:has(.toc[hidden]) .toc-toggle {
-  left: 6px;
 }
 .markdown-body {
   max-width: var(--reader-content-max-width);
@@ -805,9 +804,6 @@ body.vscode-light .markdown-body code {
   }
   .toc-resizer {
     display: none;
-  }
-  .toc-toggle {
-    left: 6px;
   }
   .toc-drawer-backdrop:not([hidden]) {
     display: block;
