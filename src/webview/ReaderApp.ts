@@ -26,6 +26,9 @@ export class ReaderApp {
   #drawerOpen = false;
   #resizingToc = false;
   #started = false;
+  #searchOpen = false;
+  #searchMatches: HTMLElement[] = [];
+  #activeSearchMatchIndex = -1;
 
   constructor(
     private readonly document: Document,
@@ -40,6 +43,11 @@ export class ReaderApp {
     this.document.addEventListener('scrollend', this.#onScrollEnd);
     this.window.addEventListener('keydown', this.#onKeyDown);
     this.window.addEventListener('scroll', this.#onScroll, { passive: true });
+    this.searchInput.addEventListener('input', this.#onSearchInput);
+    this.searchInput.addEventListener('keydown', this.#onSearchInputKeyDown);
+    this.searchPreviousButton.addEventListener('click', this.#onSearchPrevious);
+    this.searchNextButton.addEventListener('click', this.#onSearchNext);
+    this.searchCloseButton.addEventListener('click', this.#onSearchClose);
     this.resizer.addEventListener('pointerdown', this.#onResizerPointerDown);
     this.window.addEventListener('pointermove', this.#onResizerPointerMove);
     this.window.addEventListener('pointerup', this.#onResizerPointerUp);
@@ -71,6 +79,7 @@ export class ReaderApp {
 
   applyRender(result: RenderResult, restore?: ViewportState): void {
     if (result.revision <= this.#revision) return;
+    this.#closeSearch(false);
     this.#revision = result.revision;
     this.#headings = result.headings;
     this.article.innerHTML = result.html;
@@ -102,6 +111,11 @@ export class ReaderApp {
     this.document.removeEventListener('scrollend', this.#onScrollEnd);
     this.window.removeEventListener('keydown', this.#onKeyDown);
     this.window.removeEventListener('scroll', this.#onScroll);
+    this.searchInput.removeEventListener('input', this.#onSearchInput);
+    this.searchInput.removeEventListener('keydown', this.#onSearchInputKeyDown);
+    this.searchPreviousButton.removeEventListener('click', this.#onSearchPrevious);
+    this.searchNextButton.removeEventListener('click', this.#onSearchNext);
+    this.searchCloseButton.removeEventListener('click', this.#onSearchClose);
     this.resizer.removeEventListener('pointerdown', this.#onResizerPointerDown);
     this.window.removeEventListener('pointermove', this.#onResizerPointerMove);
     this.window.removeEventListener('pointerup', this.#onResizerPointerUp);
@@ -168,6 +182,18 @@ export class ReaderApp {
   };
 
   #onKeyDown = (event: KeyboardEvent): void => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+      event.preventDefault();
+      this.#openSearch();
+      return;
+    }
+
+    if (this.#searchOpen && event.key === 'Escape') {
+      event.preventDefault();
+      this.#closeSearch();
+      return;
+    }
+
     if (!this.#drawerOpen) return;
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -187,6 +213,33 @@ export class ReaderApp {
       event.preventDefault();
       first.focus();
     }
+  };
+
+  #onSearchInput = (): void => {
+    this.#updateSearch(this.searchInput.value);
+  };
+
+  #onSearchInputKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.#closeSearch();
+      return;
+    }
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    this.#selectSearchMatch(this.#activeSearchMatchIndex + (event.shiftKey ? -1 : 1));
+  };
+
+  #onSearchPrevious = (): void => {
+    this.#selectSearchMatch(this.#activeSearchMatchIndex - 1);
+  };
+
+  #onSearchNext = (): void => {
+    this.#selectSearchMatch(this.#activeSearchMatchIndex + 1);
+  };
+
+  #onSearchClose = (): void => {
+    this.#closeSearch();
   };
 
   #onResizerPointerDown = (event: PointerEvent): void => {
@@ -308,6 +361,91 @@ export class ReaderApp {
     this.#setScrollTop(restore.scrollTop);
   }
 
+  #openSearch(): void {
+    this.#searchOpen = true;
+    this.searchBar.hidden = false;
+    this.searchInput.focus();
+    this.searchInput.select();
+  }
+
+  #closeSearch(focusArticle = true): void {
+    this.#searchOpen = false;
+    this.searchBar.hidden = true;
+    this.searchInput.value = '';
+    this.#clearSearchMatches();
+    this.#updateSearchControls();
+    if (focusArticle) this.article.focus();
+  }
+
+  #updateSearch(query: string): void {
+    this.#clearSearchMatches();
+    const normalizedQuery = query.toLowerCase();
+    if (normalizedQuery.length === 0) {
+      this.#updateSearchControls();
+      return;
+    }
+
+    const textNodes: Text[] = [];
+    const walker = this.document.createTreeWalker(this.article, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => node.textContent && !node.parentElement?.closest('mark[data-search-match]')
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT
+    });
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) textNodes.push(node as Text);
+
+    for (const textNode of textNodes) {
+      const text = textNode.textContent ?? '';
+      const normalizedText = text.toLowerCase();
+      let start = 0;
+      let matchStart = normalizedText.indexOf(normalizedQuery, start);
+      if (matchStart === -1) continue;
+
+      const fragment = this.document.createDocumentFragment();
+      while (matchStart !== -1) {
+        if (matchStart > start) fragment.append(this.document.createTextNode(text.slice(start, matchStart)));
+        const match = this.document.createElement('mark');
+        match.className = 'search-match';
+        match.dataset.searchMatch = '';
+        match.textContent = text.slice(matchStart, matchStart + query.length);
+        fragment.append(match);
+        this.#searchMatches.push(match);
+        start = matchStart + query.length;
+        matchStart = normalizedText.indexOf(normalizedQuery, start);
+      }
+      if (start < text.length) fragment.append(this.document.createTextNode(text.slice(start)));
+      textNode.replaceWith(fragment);
+    }
+
+    this.#selectSearchMatch(0);
+  }
+
+  #clearSearchMatches(): void {
+    for (const match of this.#searchMatches) match.replaceWith(this.document.createTextNode(match.textContent ?? ''));
+    this.article.normalize();
+    this.#searchMatches = [];
+    this.#activeSearchMatchIndex = -1;
+  }
+
+  #selectSearchMatch(index: number): void {
+    if (this.#searchMatches.length === 0) {
+      this.#updateSearchControls();
+      return;
+    }
+    this.#activeSearchMatchIndex = (index + this.#searchMatches.length) % this.#searchMatches.length;
+    for (const [position, match] of this.#searchMatches.entries()) {
+      match.toggleAttribute('data-search-active', position === this.#activeSearchMatchIndex);
+    }
+    this.#updateSearchControls();
+    this.#searchMatches[this.#activeSearchMatchIndex].scrollIntoView({ behavior: 'auto', block: 'center' });
+  }
+
+  #updateSearchControls(): void {
+    const count = this.#searchMatches.length;
+    this.searchCount.textContent = count === 0 ? '0 of 0' : `${this.#activeSearchMatchIndex + 1} of ${count}`;
+    this.searchPreviousButton.disabled = count === 0;
+    this.searchNextButton.disabled = count === 0;
+  }
+
   #navigateTo(slug: string): void {
     if (!this.document.getElementById(slug)) return;
     this.#pendingNavigationSlug = slug;
@@ -412,5 +550,29 @@ export class ReaderApp {
 
   private get toggleTocButton(): HTMLButtonElement {
     return this.#requiredElement<HTMLButtonElement>('toggle-toc');
+  }
+
+  private get searchBar(): HTMLElement {
+    return this.#requiredElement('search-bar');
+  }
+
+  private get searchInput(): HTMLInputElement {
+    return this.#requiredElement<HTMLInputElement>('search-input');
+  }
+
+  private get searchCount(): HTMLElement {
+    return this.#requiredElement('search-count');
+  }
+
+  private get searchPreviousButton(): HTMLButtonElement {
+    return this.#requiredElement<HTMLButtonElement>('search-previous');
+  }
+
+  private get searchNextButton(): HTMLButtonElement {
+    return this.#requiredElement<HTMLButtonElement>('search-next');
+  }
+
+  private get searchCloseButton(): HTMLButtonElement {
+    return this.#requiredElement<HTMLButtonElement>('search-close');
   }
 }

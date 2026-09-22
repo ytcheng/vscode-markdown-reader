@@ -27,6 +27,14 @@ function setup() {
       <aside id="toc-drawer" hidden aria-hidden="true"></aside>
       <main class="document-container">
         <button id="toggle-toc" class="toc-toggle" type="button" aria-label="Toggle table of contents" aria-expanded="true"><span aria-hidden="true">☰</span></button>
+        <section id="search-bar" class="search-bar" role="search" hidden>
+          <label for="search-input">Find</label>
+          <input id="search-input" type="search" aria-controls="document">
+          <span id="search-count" aria-live="polite">0 of 0</span>
+          <button id="search-previous" type="button" disabled>↑</button>
+          <button id="search-next" type="button" disabled>↓</button>
+          <button id="search-close" type="button">×</button>
+        </section>
         <article id="document" class="markdown-body"></article>
       </main>
     </div>`;
@@ -53,6 +61,29 @@ afterEach(() => {
 });
 
 describe('ReaderApp', () => {
+  it('opens search with Ctrl+F and highlights literal case-insensitive matches', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>Alpha alpha <code>ALPHA</code></p>' } });
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }));
+    const input = document.querySelector('#search-input') as HTMLInputElement;
+    input.value = 'alpha';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(false);
+    expect(document.querySelectorAll('#document mark[data-search-match]')).toHaveLength(3);
+    expect(document.querySelector('#search-count')?.textContent).toBe('1 of 3');
+  });
+
+  it('opens search with Cmd+F', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true }));
+
+    expect((document.querySelector('#search-bar') as HTMLElement).hidden).toBe(false);
+  });
+
   it('ignores stale renders and builds a stable TOC for skipped heading levels', () => {
     const { app } = setup();
 
