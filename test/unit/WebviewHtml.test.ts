@@ -28,4 +28,8 @@ it('emits a strict CSP and only local scripts and styles', () => {
   expect(html).toContain('<svg width="1.2em" height="1.2em" fill="currentColor"');
   expect(html).toContain('viewBox="0 0 30 30" class="btn-icon"');
   expect(html).toContain('M2.5,7.5L2.5,22.5');
+  expect(html).toContain('id="search-bar"');
+  expect(html).toContain('id="search-input"');
+  expect(html).toContain('id="search-count"');
+  expect(html).toContain('aria-live="polite"');
 });
