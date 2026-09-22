@@ -147,7 +147,7 @@ body:has(.toc[hidden]) .reader {
 .toc ol,
 .toc-drawer ol {
   margin: 0;
-  padding-left: 16px;
+  padding-left: 8px;
   list-style: none;
 }
 
@@ -396,7 +396,7 @@ body.vscode-light .markdown-body code {
 
 .hljs-pre:hover .copy-code-btn,
 .copy-code-btn:focus-visible {
-  color: var(--vscode-button-foreground, #f0f0f0);
+  color: var(--vscode-descriptionForeground, var(--text-muted));
   background: var(--vscode-button-secondaryBackground, rgba(0, 0, 0, 0.16));
 }
 
@@ -411,10 +411,6 @@ body.vscode-light .markdown-body code {
   opacity: 0;
 }
 
-.copy-code-btn[data-copy-state='copied'] {
-  color: var(--vscode-testing-iconPassed, #2fc178);
-}
-
 .copy-code-btn[data-copy-state='copied'] .copy-code-icon,
 .copy-code-btn[data-copy-state='failed'] .copy-code-icon {
   opacity: 0;
@@ -427,7 +423,7 @@ body.vscode-light .markdown-body code {
 
 @media (hover: none) {
   .copy-code-btn {
-    color: var(--vscode-button-foreground, #f0f0f0);
+    color: var(--vscode-descriptionForeground, var(--text-muted));
     background: var(--vscode-button-secondaryBackground, rgba(0, 0, 0, 0.16));
   }
 

@@ -60,6 +60,7 @@ it('uses a borderless TOC control inside the document, compact navigation, and c
   const { css } = await less.render(source, { filename: 'media/reader.less' });
 
   expect(css).toMatch(/\.toc\s*\{[^}]*padding:\s*20px 4px 20px 4px/s);
+  expect(css).toMatch(/\.toc ol,[\s\S]*?padding-left:\s*8px;/s);
   expect(css).toMatch(/\.toc-toggle\s*\{[^}]*position:\s*sticky[^}]*top:\s*12px[^}]*display:\s*block[^}]*margin-left:\s*6px[^}]*margin-bottom:\s*-28px[^}]*border:\s*0[^}]*background:\s*transparent/s);
   expect(css).not.toContain('left: calc(var(--reader-toc-width) + 6px);');
   expect(css).toMatch(/\.toc-resizer\s*\{[^}]*width:\s*12px[^}]*margin-left:\s*-12px[^}]*cursor:\s*col-resize/s);
@@ -108,6 +109,7 @@ it('positions a compact copy control over highlighted code blocks', async () => 
 
   expect(css).toMatch(/\.copy-code-btn\s*\{[^}]*position:\s*absolute[^}]*top:\s*8px[^}]*right:\s*8px/s);
   expect(css).toMatch(/\.hljs-pre:hover \.copy-code-btn,[\s\S]*?background:/s);
+  expect(css).toMatch(/\.hljs-pre:hover \.copy-code-btn,[\s\S]*?color:\s*var\(--vscode-descriptionForeground, var\(--text-muted\)\)/s);
   expect(css).toMatch(/\.copy-code-icon\s*\{[^}]*opacity:\s*0/s);
   expect(css).toMatch(/\.hljs-pre:hover \.copy-code-icon,[\s\S]*?opacity:\s*1/s);
   expect(css).toMatch(/\.hljs-pre:hover \.code-language,[\s\S]*?opacity:\s*0/s);
