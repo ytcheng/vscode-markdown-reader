@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const vscode = vi.hoisted(() => {
-  const state: { changeTextDocument?: (event: { document: unknown }) => void } = {};
+  const state: {
+    changeTextDocument?: (event: { document: unknown }) => void;
+    fileChanged?: (uri: unknown) => void;
+    watchers: Array<{ dispose: ReturnType<typeof vi.fn> }>;
+  } = { watchers: [] };
   return {
   __state: state,
   workspace: {
@@ -9,9 +13,23 @@ const vscode = vi.hoisted(() => {
       state.changeTextDocument = handler;
       return { dispose: vi.fn() };
     }),
+    createFileSystemWatcher: vi.fn(() => {
+      const watcher = {
+        onDidChange: vi.fn((handler: (uri: unknown) => void) => {
+          state.fileChanged = handler;
+          return { dispose: vi.fn() };
+        }),
+        dispose: vi.fn()
+      };
+      state.watchers.push(watcher);
+      return watcher;
+    }),
+    openTextDocument: vi.fn(),
     getConfiguration: vi.fn(() => ({ get: vi.fn((_key: string, fallback: unknown) => fallback), update: vi.fn() }))
   },
   Uri: { joinPath: vi.fn(() => ({ toString: () => 'webview-resource' })) },
+  RelativePattern: vi.fn(),
+  Disposable: { from: vi.fn((...disposables: Array<{ dispose: () => void }>) => ({ dispose: () => disposables.forEach((disposable) => disposable.dispose()) })) },
   window: { activeTextEditor: undefined },
   commands: { executeCommand: vi.fn() },
   env: { openExternal: vi.fn() },
@@ -114,6 +132,66 @@ describe('MarkdownEditorProvider', () => {
     expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
       type: 'render',
       result: expect.objectContaining({ html: expect.stringContaining('new') })
+    }));
+    vi.useRealTimers();
+  });
+
+  it('refreshes after an external file write and disposes its watcher when the preview closes', async () => {
+    vi.useFakeTimers();
+    let disposePanel: (() => void) | undefined;
+    const postMessage = vi.fn(async () => true);
+    const panel = {
+      active: true,
+      webview: {
+        cspSource: 'vscode-webview:', options: {}, html: '',
+        asWebviewUri: vi.fn(() => ({ toString: () => 'webview-resource' })), postMessage,
+        onDidReceiveMessage: vi.fn()
+      },
+      onDidDispose: vi.fn((handler: () => void) => {
+        disposePanel = handler;
+        return { dispose: vi.fn() };
+      }),
+      onDidChangeViewState: vi.fn()
+    };
+    const uri = { scheme: 'file', toString: () => 'file:///reader.md' };
+    const document = { uri, getText: () => '# initial' };
+    const updatedDocument = { uri, getText: () => '# external' };
+    vscode.workspace.openTextDocument.mockResolvedValue(updatedDocument);
+    const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+
+    await provider.resolveCustomTextEditor(document as never, panel as never);
+
+    expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledOnce();
+    const watcher = vscode.__state.watchers[0]!;
+    vscode.__state.fileChanged!(uri);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: 'render',
+      result: expect.objectContaining({ html: expect.stringContaining('external') })
+    }));
+
+    disposePanel!();
+    expect(watcher.dispose).toHaveBeenCalledOnce();
+
+    const reopenedPostMessage = vi.fn(async () => true);
+    const reopenedPanel = {
+      active: true,
+      webview: {
+        cspSource: 'vscode-webview:', options: {}, html: '',
+        asWebviewUri: vi.fn(() => ({ toString: () => 'webview-resource' })), postMessage: reopenedPostMessage,
+        onDidReceiveMessage: vi.fn()
+      },
+      onDidDispose: vi.fn(), onDidChangeViewState: vi.fn()
+    };
+    const reopenedDocument = { uri, getText: () => '# reopened' };
+    vscode.workspace.openTextDocument.mockResolvedValue(reopenedDocument);
+    await provider.resolveCustomTextEditor(reopenedDocument as never, reopenedPanel as never);
+    expect(vscode.workspace.createFileSystemWatcher).toHaveBeenCalledTimes(2);
+    vscode.__state.fileChanged!(uri);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(reopenedPostMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: 'render',
+      result: expect.objectContaining({ html: expect.stringContaining('reopened') })
     }));
     vi.useRealTimers();
   });
