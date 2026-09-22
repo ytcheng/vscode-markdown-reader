@@ -13,6 +13,7 @@ export const MARKDOWN_READER_VIEW_TYPE = 'markdownReader.preview';
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   readonly #sessions = new Map<string, DocumentSession>();
+  readonly #watchers = new Map<string, vscode.Disposable>();
   readonly #states = new WeakMap<vscode.WebviewPanel, ViewportState>();
   readonly #renderer = new MarkdownRenderer();
   readonly #resolver = new ResourceResolver();
@@ -21,7 +22,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   #activePanel: vscode.WebviewPanel | undefined;
 
   constructor(private readonly context: vscode.ExtensionContext) {
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => this.#sessions.get(event.document.uri.toString())?.schedule()));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => {
+      const session = this.#sessions.get(event.document.uri.toString());
+      if (!session) return;
+      session.setTextProvider(() => event.document.getText());
+      session.schedule();
+    }));
   }
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
@@ -48,8 +54,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       }
     };
     session.attach(sink);
+    this.#watchFile(document);
 
-    panel.onDidDispose(() => session.detach(sink), undefined, this.context.subscriptions);
+    panel.onDidDispose(() => {
+      session.detach(sink);
+      this.#disposeSession(document.uri.toString());
+    }, undefined, this.context.subscriptions);
     panel.onDidChangeViewState(() => { if (panel.active) { this.activeDocumentUri = document.uri; this.#activePanel = panel; this.#navigation.markActive(document.uri.toString(), panel.webview); } }, undefined, this.context.subscriptions);
     panel.webview.onDidReceiveMessage((raw) => void this.#handleMessage(raw, document, panel), undefined, this.context.subscriptions);
   }
@@ -89,7 +99,42 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       session = new DocumentSession(() => document.getText(), this.#renderer);
       this.#sessions.set(key, session);
     }
+    session.setTextProvider(() => document.getText());
     return session;
+  }
+
+  #watchFile(document: vscode.TextDocument): void {
+    const key = document.uri.toString();
+    if (document.uri.scheme !== 'file' || this.#watchers.has(key)) return;
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(document.uri, '*'),
+      true,
+      false,
+      true
+    );
+    const changeSubscription = watcher.onDidChange((uri) => void this.#refreshFromFile(uri));
+    this.#watchers.set(key, vscode.Disposable.from(watcher, changeSubscription));
+  }
+
+  async #refreshFromFile(uri: vscode.Uri): Promise<void> {
+    const session = this.#sessions.get(uri.toString());
+    if (!session) return;
+    try {
+      const document = await vscode.workspace.openTextDocument(uri);
+      session.setTextProvider(() => document.getText());
+      session.schedule();
+    } catch {
+      // File deletion and short-lived I/O failures are retried by the next file event.
+    }
+  }
+
+  #disposeSession(key: string): void {
+    const session = this.#sessions.get(key);
+    if (!session || session.hasPanels) return;
+    session.dispose();
+    this.#sessions.delete(key);
+    this.#watchers.get(key)?.dispose();
+    this.#watchers.delete(key);
   }
 
   async #handleMessage(raw: unknown, document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
