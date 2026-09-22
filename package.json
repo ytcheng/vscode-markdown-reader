@@ -1,0 +1,88 @@
+{
+  "name": "markdown-reader",
+  "displayName": "Markdown Reader",
+  "description": "Open Markdown as a polished reading view in the current VS Code tab.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.100.0",
+    "node": ">=22.22.2"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:markdownReader.preview"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "build:css": "lessc media/reader.less media/reader.css && lessc media/high-contrast.less media/high-contrast.css",
+    "build": "npm run build:css && node esbuild.mjs",
+    "check:types": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vitest run",
+    "prepare:visual": "node dist/test/visual/generate.js",
+    "test:visual": "npm run build && npm run prepare:visual && playwright test test/visual/visual.spec.ts",
+    "build:test-extension": "tsc -p test/extension/tsconfig.json",
+    "test:extension": "npm run build && npm run build:test-extension && node dist/test/runTest.js",
+    "check": "npm run check:types && npm run test:unit && npm run build",
+    "verify": "npm run check:types && npm run test:unit && npm run build && npm run test:extension && npm run test:visual"
+  },
+  "dependencies": {
+    "@md-reader/theme": "2.0.5",
+    "markdown-it": "15.0.2",
+    "markdown-it-task-lists": "2.1.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/markdown-it": "14.2.0",
+    "@types/mocha": "10.0.10",
+    "@types/node": "26.6.2",
+    "@types/pixelmatch": "7.1.0",
+    "@types/pngjs": "6.0.5",
+    "@types/vscode": "1.100.0",
+    "@vscode/test-electron": "3.1.0",
+    "esbuild": "0.28.2",
+    "jsdom": "30.1.0",
+    "less": "4.9.1",
+    "mocha": "12.0.2",
+    "pixelmatch": "7.2.0",
+    "pngjs": "7.0.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
+  },
+  "contributes": {
+    "customEditors": [{
+      "viewType": "markdownReader.preview",
+      "displayName": "Markdown Reader",
+      "selector": [{ "filenamePattern": "*.md" }],
+      "priority": "default"
+    }],
+    "commands": [
+      { "command": "markdownReader.openPreview", "title": "Open Preview", "category": "Markdown Reader" },
+      { "command": "markdownReader.openSource", "title": "Open Source", "category": "Markdown Reader" },
+      { "command": "markdownReader.togglePreview", "title": "Toggle Preview", "category": "Markdown Reader" },
+      { "command": "markdownReader.toggleToc", "title": "Toggle Table of Contents", "category": "Markdown Reader" }
+    ],
+    "keybindings": [
+      { "command": "markdownReader.openPreview", "key": "ctrl+shift+v", "mac": "cmd+shift+v", "when": "editorTextFocus && resourceExtname == .md" },
+      { "command": "markdownReader.openSource", "key": "ctrl+shift+v", "mac": "cmd+shift+v", "when": "activeCustomEditorId == markdownReader.preview" }
+    ],
+    "menus": {
+      "editor/title": [
+        { "command": "markdownReader.openSource", "when": "activeCustomEditorId == markdownReader.preview", "group": "navigation@1" },
+        { "command": "markdownReader.toggleToc", "when": "activeCustomEditorId == markdownReader.preview", "group": "navigation@2" }
+      ]
+    },
+    "configuration": {
+      "title": "Markdown Reader",
+      "properties": {
+        "markdownReader.toc.enabled": { "type": "boolean", "default": true },
+        "markdownReader.toc.maxDepth": { "type": "integer", "default": 3, "minimum": 1, "maximum": 6 },
+        "markdownReader.toc.width": { "type": "integer", "default": 260, "minimum": 220, "maximum": 320 },
+        "markdownReader.content.maxWidth": { "type": "integer", "default": 900, "minimum": 560, "maximum": 1600 }
+      }
+    }
+  }
+}

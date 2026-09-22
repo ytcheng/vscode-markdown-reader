@@ -1,0 +1,12 @@
+.vscode/**
+src/**
+test/**
+docs/**
+media/**/*.less
+**/*.map
+tsconfig.json
+vitest.config.ts
+esbuild.mjs
+playwright.config.ts
+dist/test/**
+test-results/**

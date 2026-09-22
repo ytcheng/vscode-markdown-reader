@@ -1,0 +1,30 @@
+body.vscode-high-contrast,
+body.vscode-high-contrast-light {
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editor-background);
+  forced-color-adjust: auto;
+
+  .toc,
+  .toc-drawer,
+  .reader-toolbar,
+  .markdown-body th,
+  .markdown-body td,
+  .markdown-body tr,
+  .markdown-body pre,
+  .markdown-body code {
+    border-color: var(--vscode-contrastBorder);
+  }
+
+  .toc a[aria-current='location'],
+  .toc-drawer a[aria-current='location'] {
+    outline: 2px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+    font-weight: 700;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+  }
+}

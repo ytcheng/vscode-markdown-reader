@@ -1,0 +1,39 @@
+body.vscode-high-contrast,
+body.vscode-high-contrast-light {
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editor-background);
+  forced-color-adjust: auto;
+}
+body.vscode-high-contrast .toc,
+body.vscode-high-contrast-light .toc,
+body.vscode-high-contrast .toc-drawer,
+body.vscode-high-contrast-light .toc-drawer,
+body.vscode-high-contrast .reader-toolbar,
+body.vscode-high-contrast-light .reader-toolbar,
+body.vscode-high-contrast .markdown-body th,
+body.vscode-high-contrast-light .markdown-body th,
+body.vscode-high-contrast .markdown-body td,
+body.vscode-high-contrast-light .markdown-body td,
+body.vscode-high-contrast .markdown-body tr,
+body.vscode-high-contrast-light .markdown-body tr,
+body.vscode-high-contrast .markdown-body pre,
+body.vscode-high-contrast-light .markdown-body pre,
+body.vscode-high-contrast .markdown-body code,
+body.vscode-high-contrast-light .markdown-body code {
+  border-color: var(--vscode-contrastBorder);
+}
+body.vscode-high-contrast .toc a[aria-current='location'],
+body.vscode-high-contrast-light .toc a[aria-current='location'],
+body.vscode-high-contrast .toc-drawer a[aria-current='location'],
+body.vscode-high-contrast-light .toc-drawer a[aria-current='location'] {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+  font-weight: 700;
+}
+body.vscode-high-contrast button:focus-visible,
+body.vscode-high-contrast-light button:focus-visible,
+body.vscode-high-contrast a:focus-visible,
+body.vscode-high-contrast-light a:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
