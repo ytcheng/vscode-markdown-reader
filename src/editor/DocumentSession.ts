@@ -14,13 +14,24 @@ export class DocumentSession {
   #timer: ReturnType<typeof setTimeout> | undefined;
   #disposed = false;
   #lastResult: RenderResult | undefined;
+  #getText: () => string;
   readonly #panels = new Set<RenderSink>();
 
   constructor(
-    private readonly getText: () => string,
+    getText: () => string,
     private readonly renderer: Renderer,
     private readonly debounceMs = 200
-  ) {}
+  ) {
+    this.#getText = getText;
+  }
+
+  get hasPanels(): boolean {
+    return this.#panels.size > 0;
+  }
+
+  setTextProvider(getText: () => string): void {
+    this.#getText = getText;
+  }
 
   attach(panel: RenderSink): void {
     this.#panels.add(panel);
@@ -37,7 +48,7 @@ export class DocumentSession {
 
   async renderNow(): Promise<void> {
     const revision = ++this.#revision;
-    const result = await Promise.resolve(this.renderer.render(this.getText(), revision));
+    const result = await Promise.resolve(this.renderer.render(this.#getText(), revision));
     if (this.#disposed || revision !== this.#revision) return;
     this.#lastResult = result;
     await Promise.all([...this.#panels].map((panel) => panel.postRender(result)));

@@ -2,6 +2,21 @@ import { describe, expect, it, vi } from 'vitest';
 import { DocumentSession } from '../../src/editor/DocumentSession.js';
 
 describe('DocumentSession', () => {
+  it('renders with a replacement text provider after a document model is reopened', async () => {
+    vi.useFakeTimers();
+    const render = vi.fn((source: string, revision: number) => ({ revision, html: source, headings: [], resources: [] }));
+    const panel = { postRender: vi.fn(async () => true) };
+    const session = new DocumentSession(() => '# old', { render }, 200);
+    session.attach(panel);
+
+    session.setTextProvider(() => '# new');
+    session.schedule();
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(render).toHaveBeenCalledWith('# new', 1);
+    vi.useRealTimers();
+  });
+
   it('debounces changes and waits to send content until a newly attached panel is ready', async () => {
     vi.useFakeTimers();
     const render = vi.fn((source: string, revision: number) => ({ revision, html: source, headings: [], resources: [] }));
