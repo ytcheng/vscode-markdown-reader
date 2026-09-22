@@ -2,7 +2,7 @@
   "name": "vscode-markdown-reader",
   "displayName": "Markdown Reader: Focus Mode",
   "description": "Open Markdown as a polished reading view in the current VS Code tab.",
-  "version": "0.2.3",
+  "version": "0.3.2",
   "publisher": "chengjian",
   "private": true,
   "repository": {
@@ -115,6 +115,21 @@
         "command": "markdownReader.toggleToc",
         "title": "Toggle Table of Contents",
         "category": "Markdown Reader"
+      },
+      {
+        "command": "markdownReader.readingSettings",
+        "title": "Reading Settings",
+        "category": "Markdown Reader"
+      },
+      {
+        "command": "markdownReader.exportHtml",
+        "title": "Export HTML",
+        "category": "Markdown Reader"
+      },
+      {
+        "command": "markdownReader.print",
+        "title": "Print / Save as PDF",
+        "category": "Markdown Reader"
       }
     ],
     "keybindings": [
@@ -137,6 +152,20 @@
           "command": "markdownReader.openSource",
           "when": "activeCustomEditorId == markdownReader.preview",
           "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "markdownReader.readingSettings",
+          "when": "activeCustomEditorId == markdownReader.preview"
+        },
+        {
+          "command": "markdownReader.exportHtml",
+          "when": "activeCustomEditorId == markdownReader.preview"
+        },
+        {
+          "command": "markdownReader.print",
+          "when": "activeCustomEditorId == markdownReader.preview"
         }
       ]
     },
@@ -163,7 +192,63 @@
           "type": "integer",
           "default": 900,
           "minimum": 560,
-          "maximum": 1600
+          "maximum": 1600,
+          "scope": "resource"
+        },
+        "markdownReader.theme": {
+          "type": "string",
+          "enum": [
+            "reader",
+            "github"
+          ],
+          "default": "reader",
+          "description": "Reading typography theme.",
+          "scope": "resource"
+        },
+        "markdownReader.colorMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "light",
+            "dark"
+          ],
+          "default": "light",
+          "description": "Reader appearance. Auto follows VS Code. High contrast always follows the workbench.",
+          "scope": "resource"
+        },
+        "markdownReader.fontFamily": {
+          "type": "string",
+          "default": "",
+          "maxLength": 200,
+          "description": "Body font family (installed locally), e.g. \"Noto Sans SC\", sans-serif. Empty uses system fonts. Code remains monospace.",
+          "scope": "resource"
+        },
+        "markdownReader.fontSize": {
+          "type": "integer",
+          "default": 16,
+          "minimum": 12,
+          "maximum": 32,
+          "description": "Body font size in pixels. Headings scale proportionally.",
+          "scope": "resource"
+        },
+        "markdownReader.largeFile.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "on",
+            "off"
+          ],
+          "default": "auto",
+          "description": "Large file mode shows code, math and diagrams as source, preserving navigation and search.",
+          "scope": "resource"
+        },
+        "markdownReader.largeFile.thresholdKb": {
+          "type": "integer",
+          "default": 1024,
+          "minimum": 1,
+          "maximum": 102400,
+          "description": "Automatic large file mode threshold in KiB (UTF-8 bytes).",
+          "scope": "resource"
         }
       }
     }

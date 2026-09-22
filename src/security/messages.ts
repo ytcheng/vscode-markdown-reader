@@ -1,3 +1,4 @@
+import { isSettingValue, type ReaderSettings } from '../settings/ReaderSettings.js';
 import type { ViewportState, WebviewToExtensionMessage } from '../webview/messages.js';
 
 const MAX_HREF_LENGTH = 8_192;
@@ -8,6 +9,23 @@ export function parseWebviewMessage(value: unknown): WebviewToExtensionMessage |
   if (!isRecord(value) || typeof value.type !== 'string') return undefined;
 
   switch (value.type) {
+    case 'updateSetting':
+      return hasOnlyKeys(value, ['type', 'key', 'value', 'requestId']) && validRequestId(value.requestId) && typeof value.key === 'string' && isSettingValue(value.key, value.value)
+        ? { type: 'updateSetting', key: value.key as keyof ReaderSettings, value: value.value as string | number, requestId: value.requestId as number } : undefined;
+    case 'print':
+    case 'exportHtml': {
+      if (!hasOnlyKeys(value, ['type', 'diagrams', 'revision']) || typeof value.revision !== 'number' || !Number.isSafeInteger(value.revision) || value.revision < 0 || !Array.isArray(value.diagrams) || value.diagrams.length > 1000) return undefined;
+      let length = 0;
+      for (const diagram of value.diagrams) {
+        if (typeof diagram !== 'string' || (diagram !== '' && !/^data:image\/svg\+xml;charset=utf-8,(?:[A-Za-z0-9_.!~*'()-]|%[A-Fa-f0-9]{2})+$/.test(diagram))) return undefined;
+        length += diagram.length;
+        if (length > 10 * 1024 * 1024) return undefined;
+      }
+      return { type: value.type, diagrams: value.diagrams, revision: value.revision };
+    }
+    case 'resetSettings':
+      return hasOnlyKeys(value, ['type', 'requestId']) && validRequestId(value.requestId) ? { type: 'resetSettings', requestId: value.requestId as number } : undefined;
+    case 'openSettings':
     case 'ready':
     case 'toggleToc':
       return hasOnlyKeys(value, ['type']) ? { type: value.type } : undefined;
@@ -64,3 +82,5 @@ function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[])
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
+
+function validRequestId(value: unknown): boolean { return typeof value === "number" && Number.isSafeInteger(value) && value > 0; }

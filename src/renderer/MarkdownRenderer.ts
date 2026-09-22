@@ -5,12 +5,13 @@ import { highlightCode } from './ShikiRenderer.js';
 import { tex } from '@mdit/plugin-tex';
 import { renderToString, type KatexOptions } from 'katex';
 import { SlugGenerator } from './SlugGenerator.js';
-import type { HeadingItem, RenderResource, RenderResult } from './types.js';
+import type { HeadingItem, RenderOptions, RenderResource, RenderResult } from './types.js';
 
 interface RenderEnvironment extends Env {
   resources: RenderResource[];
   highlighted: Map<Token, string>;
   mathMacros: NonNullable<KatexOptions['macros']>;
+  largeFile: boolean;
 }
 
 const TABLE_ALIGNMENT = /text-align:\s*(left|center|right)/i;
@@ -23,14 +24,19 @@ export class MarkdownRenderer {
       enabled: false,
       label: true
     }).use(tex, {
-      render: (content: string, displayMode: boolean, env: Env) => renderToString(content, {
-        displayMode, trust: false, throwOnError: false, maxExpand: 1000, maxSize: 20,
-        macros: (env as RenderEnvironment).mathMacros, strict: 'ignore'
-      })
+      render: (content: string, displayMode: boolean, env: Env) => (env as RenderEnvironment).largeFile
+        ? `<code class="math-source">${this.#md.utils.escapeHtml(displayMode ? `$$\n${content}$$` : `$${content}$`)}</code>`
+        : renderToString(content, {
+          displayMode, trust: false, throwOnError: false, maxExpand: 1000, maxSize: 20,
+          macros: (env as RenderEnvironment).mathMacros, strict: 'ignore'
+        })
     });
     const mathBlock = this.#md.renderer.rules.math_block!;
-    this.#md.renderer.rules.math_block = (tokens, index, options, env, self) =>
-      `<div class="katex-block" data-source-line="${tokens[index].map?.[0] ?? 0}">${mathBlock(tokens, index, options, env, self)}</div>\n`;
+    this.#md.renderer.rules.math_block = (tokens, index, options, env, self) => {
+      const tag = (env as RenderEnvironment).largeFile ? 'pre' : 'div';
+      const className = (env as RenderEnvironment).largeFile ? 'math-source-block' : 'katex-block';
+      return `<${tag} class="${className}" data-source-line="${tokens[index].map?.[0] ?? 0}">${mathBlock(tokens, index, options, env, self)}</${tag}>\n`;
+    };
 
     const defaultImageRule: RendererRule =
       this.#md.renderer.rules.image ??
@@ -49,7 +55,7 @@ export class MarkdownRenderer {
     this.#md.renderer.rules.fence = (tokens, index, _options, env) => {
       const token = tokens[index];
       const language = token.info.trim().split(/\s+/, 1)[0].toLowerCase();
-      if (language === 'mermaid') {
+      if (language === 'mermaid' && !(env as RenderEnvironment).largeFile) {
         return `<figure data-mermaid data-source-line="${token.map?.[0] ?? 0}"><pre><code>${this.#md.utils.escapeHtml(token.content)}</code></pre></figure>\n`;
       }
       const code = (env as RenderEnvironment).highlighted.get(token) ?? this.#md.utils.escapeHtml(token.content);
@@ -70,16 +76,25 @@ export class MarkdownRenderer {
     };
   }
 
-  async render(source: string, revision: number): Promise<RenderResult> {
+  async render(source: string, revision: number, options: RenderOptions = {}): Promise<RenderResult> {
     const resources: RenderResource[] = [];
-    const environment: RenderEnvironment = { resources, highlighted: new Map(), mathMacros: {} };
+    const largeFile = options.largeFile === true;
+    const environment: RenderEnvironment = { resources, highlighted: new Map(), mathMacros: {}, largeFile };
     const tokens = this.#md.parse(source, environment);
-    await Promise.all(tokens.filter((token) => token.type === 'fence').map(async (token) => {
-      const language = token.info.trim().split(/\s+/, 1)[0].toLowerCase();
-      if (language === 'mermaid') return;
-      const html = await highlightCode(token.content, language);
-      if (html !== undefined) environment.highlighted.set(token, html);
-    }));
+    if (!largeFile) {
+      const highlightTokens = async (items: Token[]): Promise<void> => {
+        await Promise.all(items.map(async (token) => {
+          if (token.type === 'fence') {
+            const language = token.info.trim().split(/\s+/, 1)[0].toLowerCase();
+            if (language === 'mermaid') return;
+            const html = await highlightCode(token.content, language);
+            if (html !== undefined) environment.highlighted.set(token, html);
+          }
+          if (token.children) await highlightTokens(token.children);
+        }));
+      };
+      await highlightTokens(tokens);
+    }
     const slugs = new SlugGenerator();
     const headings: HeadingItem[] = [];
 
@@ -128,7 +143,8 @@ export class MarkdownRenderer {
       html,
       styles: styles.join('\n'),
       headings,
-      resources
+      resources,
+      largeFile
     };
   }
 

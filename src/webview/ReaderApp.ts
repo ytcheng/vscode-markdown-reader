@@ -1,3 +1,4 @@
+import { ReaderControls } from './ReaderControls.js';
 import { MermaidRenderer } from './MermaidRenderer.js';
 import type { HeadingItem, RenderResult } from '../renderer/types.js';
 import type { ExtensionToWebviewMessage, ViewportState, WebviewToExtensionMessage } from './messages.js';
@@ -19,6 +20,7 @@ export interface VsCodeApi {
 
 export class ReaderApp {
   #revision = -1;
+  readonly #controls: ReaderControls;
   readonly #mermaid = new MermaidRenderer();
   #activeSlug: string | undefined;
   #tocVisible = true;
@@ -41,11 +43,12 @@ export class ReaderApp {
   constructor(
     private readonly document: Document,
     private readonly api: VsCodeApi
-  ) {}
+  ) { this.#controls = new ReaderControls(document, (message) => api.postMessage(message)); }
 
   start(): void {
     if (this.#started) return;
     this.#started = true;
+    this.#controls.start();
     this.window.addEventListener('message', this.#onMessage);
     this.document.addEventListener('click', this.#onClick);
     this.document.addEventListener('dblclick', this.#onDoubleClick);
@@ -65,6 +68,10 @@ export class ReaderApp {
 
   handleMessage(message: ExtensionToWebviewMessage): void {
     switch (message.type) {
+      case 'setReaderSettings': this.#controls.apply(message.settings); return;
+      case 'settingsAcknowledged': this.#controls.acknowledge(message.requestId, message.settings); return;
+      case 'showSettings': this.#controls.openSettings(); return;
+      case 'requestExport': this.#controls.requestExport(message.action); return;
       case 'render':
         this.applyRender(message.result, message.restore);
         return;
@@ -93,6 +100,8 @@ export class ReaderApp {
     this.#clearSearchMatches();
     this.#updateSearchControls();
     this.#revision = result.revision;
+    this.#controls.setRevision(result.revision);
+    this.#controls.setLargeFile(result.largeFile ?? false);
     this.#headings = result.headings;
     this.article.innerHTML = result.html;
     this.#headingElements.clear();
@@ -132,6 +141,7 @@ export class ReaderApp {
   }
 
   dispose(): void {
+    this.#controls.dispose();
     this.window.removeEventListener('message', this.#onMessage);
     this.document.removeEventListener('click', this.#onClick);
     this.document.removeEventListener('dblclick', this.#onDoubleClick);

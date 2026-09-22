@@ -1,5 +1,250 @@
 "use strict";
 (() => {
+  // src/settings/ReaderSettings.ts
+  var defaultSettings = Object.freeze({
+    theme: "reader",
+    colorMode: "light",
+    fontFamily: "",
+    fontSize: 16,
+    contentMaxWidth: 900,
+    largeFileMode: "auto",
+    largeFileThresholdKb: 1024
+  });
+  var settingKeys = Object.keys(defaultSettings);
+  function isSettingValue(key, value) {
+    switch (key) {
+      case "theme":
+        return value === "reader" || value === "github";
+      case "colorMode":
+        return ["auto", "light", "dark"].includes(String(value)) && typeof value === "string";
+      case "largeFileMode":
+        return ["auto", "on", "off"].includes(String(value)) && typeof value === "string";
+      case "fontFamily":
+        return typeof value === "string" && value.length <= 200 && !/[;{}<>\\\n\r\x00-\x1f]/u.test(value) && !/url\s*\(/i.test(value);
+      case "fontSize":
+        return integerBetween(value, 12, 32);
+      case "contentMaxWidth":
+        return integerBetween(value, 560, 1600);
+      case "largeFileThresholdKb":
+        return integerBetween(value, 1, 102400);
+      default:
+        return false;
+    }
+  }
+  function integerBetween(value, min, max) {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= min && value <= max;
+  }
+  function normalizeSettings(value) {
+    const result = { ...defaultSettings };
+    for (const key of settingKeys) if (isSettingValue(key, value[key])) Object.assign(result, { [key]: value[key] });
+    return result;
+  }
+
+  // src/webview/ReaderControls.ts
+  var ReaderControls = class {
+    constructor(document2, post) {
+      this.document = document2;
+      this.post = post;
+    }
+    document;
+    post;
+    #settings = { ...defaultSettings };
+    #observer;
+    #revision = -1;
+    #requestId = 0;
+    #pending = /* @__PURE__ */ new Map();
+    start() {
+      if (!this.document.getElementById("reader-menu-toggle")) return;
+      this.document.addEventListener("click", this.#click);
+      this.document.addEventListener("change", this.#change);
+      this.document.addEventListener("input", this.#input);
+      this.document.addEventListener("keydown", this.#key, true);
+      this.dialog.addEventListener("close", this.#closed);
+      this.#observer = new MutationObserver(() => this.#color());
+      this.#observer.observe(this.document.body, { attributes: true, attributeFilter: ["class"] });
+      this.apply(this.#settings);
+    }
+    dispose() {
+      this.document.removeEventListener("click", this.#click);
+      this.document.removeEventListener("change", this.#change);
+      this.document.removeEventListener("input", this.#input);
+      this.document.removeEventListener("keydown", this.#key, true);
+      this.document.getElementById("reader-settings")?.removeEventListener("close", this.#closed);
+      this.#observer?.disconnect();
+    }
+    apply(settings) {
+      const merged = { ...settings };
+      for (const [key, pending] of this.#pending) Object.assign(merged, { [key]: pending.value });
+      this.#settings = normalizeSettings(merged);
+      const body = this.document.body;
+      body.dataset.readerTheme = this.#settings.theme;
+      body.style.setProperty("--reader-font-size", `${this.#settings.fontSize}px`);
+      body.style.setProperty("--reader-font-family", this.#settings.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
+      body.style.setProperty("--reader-content-max-width", `${this.#settings.contentMaxWidth}px`);
+      this.#color();
+      if (!this.document.getElementById("reader-settings")) return;
+      for (const field of this.document.querySelectorAll("[data-setting]")) {
+        if (field === this.document.activeElement) continue;
+        field.value = String(this.#settings[field.dataset.setting]);
+      }
+      const family = this.#settings.fontFamily;
+      if (this.document.activeElement?.id !== "reader-font-family" && this.document.activeElement?.id !== "reader-font-preset") this.get("reader-font-preset").value = ["", "serif", "monospace"].includes(family) ? family : "custom";
+      this.#customFont();
+      this.get("reader-width-value").textContent = `${this.#settings.contentMaxWidth}px`;
+      this.get("reader-font-smaller").disabled = this.#settings.fontSize <= 12;
+      this.get("reader-font-larger").disabled = this.#settings.fontSize >= 32;
+      this.get("reader-large-file-note").textContent = `Automatic at ${this.#settings.largeFileThresholdKb} KiB. Large file mode shows code, math and diagrams as source. Turn it off for full rendering.`;
+    }
+    acknowledge(requestId, settings) {
+      for (const [key, pending] of this.#pending) if (pending.requestId === requestId) this.#pending.delete(key);
+      this.apply(settings);
+    }
+    setRevision(revision) {
+      this.#revision = revision;
+      for (const button of this.document.querySelectorAll('.reader-actions [data-action="print"], .reader-actions [data-action="exportHtml"]')) button.disabled = revision < 0;
+    }
+    setLargeFile(enabled) {
+      const button = this.document.getElementById("reader-performance");
+      if (button) button.hidden = !enabled;
+      this.document.body.classList.toggle("reader-large-file", enabled);
+    }
+    openSettings() {
+      this.#menu(false);
+      this.dialog.showModal();
+      this.get("reader-theme").focus();
+    }
+    requestExport(type) {
+      if (this.#revision < 0) return;
+      const diagrams = [...this.document.querySelectorAll("#document [data-mermaid]")].map((figure) => figure.querySelector("img.mermaid-diagram")?.getAttribute("src") ?? "");
+      this.post({ type, diagrams, revision: this.#revision });
+    }
+    #color() {
+      const body = this.document.body;
+      const high = body.classList.contains("vscode-high-contrast") || body.classList.contains("vscode-high-contrast-light");
+      body.dataset.readerColor = high ? "high-contrast" : this.#settings.colorMode === "auto" ? body.classList.contains("vscode-dark") ? "dark" : "light" : this.#settings.colorMode;
+    }
+    #menu(open, restore = false) {
+      this.get("reader-menu").hidden = !open;
+      this.get("reader-menu-toggle").setAttribute("aria-expanded", String(open));
+      if (open) this.get("reader-menu").querySelector("button")?.focus();
+      else if (restore) this.get("reader-menu-toggle").focus();
+    }
+    #closed = () => {
+      this.get("reader-menu-toggle").focus();
+    };
+    #customFont() {
+      const custom = this.get("reader-font-preset").value === "custom";
+      this.get("reader-font-family").hidden = !custom;
+      this.get("reader-font-family-label").hidden = !custom;
+    }
+    #update(key, value) {
+      if (!isSettingValue(key, value)) {
+        this.apply(this.#settings);
+        return;
+      }
+      const requestId = ++this.#requestId;
+      this.#pending.set(key, { value, requestId });
+      this.apply({ ...this.#settings, [key]: value });
+      this.post({ type: "updateSetting", key, value, requestId });
+    }
+    #click = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const button = target.closest("button");
+      switch (button?.id) {
+        case "reader-menu-toggle":
+          this.#menu(this.get("reader-menu").hidden === true);
+          return;
+        case "reader-performance":
+          this.openSettings();
+          return;
+        case "reader-settings-close":
+          this.dialog.close();
+          return;
+        case "reader-settings-reset": {
+          const requestId = ++this.#requestId;
+          this.#pending.clear();
+          this.apply({ ...defaultSettings });
+          for (const [key, value] of Object.entries(defaultSettings)) this.#pending.set(key, { value, requestId });
+          this.post({ type: "resetSettings", requestId });
+          return;
+        }
+        case "reader-settings-more":
+          this.post({ type: "openSettings" });
+          return;
+        case "reader-font-smaller":
+          this.#update("fontSize", Math.max(12, this.#settings.fontSize - 1));
+          return;
+        case "reader-font-larger":
+          this.#update("fontSize", Math.min(32, this.#settings.fontSize + 1));
+          return;
+      }
+      const action = button?.dataset.action;
+      if (action) {
+        this.#menu(false, true);
+        if (action === "settings") this.openSettings();
+        if (action === "source") this.post({ type: "openSource" });
+        if (action === "print" || action === "exportHtml") this.requestExport(action);
+        if (action === "feedback") this.post({ type: "openLink", href: "https://github.com/ytcheng/vscode-markdown-reader/issues" });
+        if (action === "about") this.post({ type: "openLink", href: "https://github.com/ytcheng/vscode-markdown-reader#readme" });
+      } else if (!target.closest(".reader-actions")) this.#menu(false);
+      if (target === this.dialog) {
+        const rect = this.dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) this.dialog.close();
+      }
+    };
+    #change = (event) => {
+      const field = event.target;
+      if (field.id === "reader-font-preset") {
+        this.#customFont();
+        if (field.value === "custom") this.get("reader-font-family").focus();
+        else this.#update("fontFamily", field.value);
+        return;
+      }
+      const key = field.dataset?.setting;
+      if (key) this.#update(key, field.type === "number" || field.type === "range" ? Number(field.value) : field.value.trim());
+    };
+    #input = (event) => {
+      const field = event.target;
+      if (field.id !== "reader-content-width") return;
+      this.document.body.style.setProperty("--reader-content-max-width", `${field.value}px`);
+      this.get("reader-width-value").textContent = `${field.value}px`;
+    };
+    #key = (event) => {
+      if (this.dialog.open) {
+        event.stopPropagation();
+        if (event.key === "Escape") {
+          event.preventDefault();
+          this.dialog.close();
+        }
+        return;
+      }
+      if (this.get("reader-menu").hidden) return;
+      if (event.key === "Escape" || event.key === "Tab") {
+        this.#menu(false, true);
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      const buttons = [...this.get("reader-menu").querySelectorAll("button:not(:disabled)")];
+      const index = buttons.indexOf(this.document.activeElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : event.key === "ArrowDown" ? (index + 1) % buttons.length : event.key === "ArrowUp" ? (index - 1 + buttons.length) % buttons.length : -1;
+      if (next >= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        buttons[next].focus();
+      }
+    };
+    get(id) {
+      return this.document.getElementById(id);
+    }
+    get dialog() {
+      return this.get("reader-settings");
+    }
+  };
+
   // src/webview/MermaidFrame.ts
   var MermaidFrame = class {
     constructor(document2) {
@@ -143,10 +388,12 @@
     constructor(document2, api) {
       this.document = document2;
       this.api = api;
+      this.#controls = new ReaderControls(document2, (message) => api.postMessage(message));
     }
     document;
     api;
     #revision = -1;
+    #controls;
     #mermaid = new MermaidRenderer();
     #activeSlug;
     #tocVisible = true;
@@ -168,6 +415,7 @@
     start() {
       if (this.#started) return;
       this.#started = true;
+      this.#controls.start();
       this.window.addEventListener("message", this.#onMessage);
       this.document.addEventListener("click", this.#onClick);
       this.document.addEventListener("dblclick", this.#onDoubleClick);
@@ -186,6 +434,18 @@
     }
     handleMessage(message) {
       switch (message.type) {
+        case "setReaderSettings":
+          this.#controls.apply(message.settings);
+          return;
+        case "settingsAcknowledged":
+          this.#controls.acknowledge(message.requestId, message.settings);
+          return;
+        case "showSettings":
+          this.#controls.openSettings();
+          return;
+        case "requestExport":
+          this.#controls.requestExport(message.action);
+          return;
         case "render":
           this.applyRender(message.result, message.restore);
           return;
@@ -213,6 +473,8 @@
       this.#clearSearchMatches();
       this.#updateSearchControls();
       this.#revision = result.revision;
+      this.#controls.setRevision(result.revision);
+      this.#controls.setLargeFile(result.largeFile ?? false);
       this.#headings = result.headings;
       this.article.innerHTML = result.html;
       this.#headingElements.clear();
@@ -248,6 +510,7 @@
       };
     }
     dispose() {
+      this.#controls.dispose();
       this.window.removeEventListener("message", this.#onMessage);
       this.document.removeEventListener("click", this.#onClick);
       this.document.removeEventListener("dblclick", this.#onDoubleClick);

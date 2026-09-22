@@ -2,6 +2,26 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.2 — 2026-09-22
+
+- Extend the light Reader directory background across scrollbar tracks, corners and thumb borders, including the narrow-screen drawer.
+- Update English and Chinese documentation with menu and reading-settings screenshots.
+
+## 0.3.1 — 2026-09-22
+
+- Default to the original Reader + Light appearance.
+- Give the light Reader table of contents and narrow-screen directory drawer an rgb(249, 250, 251) background.
+
+## 0.3.0 — 2026-09-22
+
+- Add a Chrome Markdown Reader-style top-right menu and accessible reading settings dialog.
+- Add Reader / GitHub typography themes, light / dark / automatic appearance, custom local body fonts, adjustable font size and content width.
+- Persist settings at the existing workspace override or user scope and synchronize open readers.
+- Add automatic large file mode (1 MiB by default), rendering code, math and diagrams as source while preserving navigation and search.
+- Export portable HTML with embedded local images, styles and math fonts; retain rendered Mermaid diagrams as image snapshots.
+- Open a print-ready browser page with paper-friendly spacing, wrapping and pagination; save PDF through the browser print dialog.
+
+
 ## 0.2.3
 
 - Replace heading Edit text buttons with compact pencil icons, preserving tooltips, accessible labels, and source navigation.

@@ -1,3 +1,4 @@
+import { controlsHtml } from './controlsHtml.js';
 export interface WebviewHtmlOptions {
   cspSource: string;
   nonce?: string;
@@ -23,6 +24,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   <script defer src="${options.scriptUri}"></script>
 </head>
 <body class="vscode-light" data-mermaid-frame-uri="${options.mermaidFrameUri ?? ''}" data-mermaid-script-uri="${options.mermaidScriptUri ?? ''}">
+  ${controlsHtml}
   <div class="reader">
     <nav id="toc" class="toc" aria-label="Table of contents"></nav>
     <div id="toc-resizer" class="toc-resizer" role="separator" aria-label="Resize table of contents" aria-orientation="vertical"></div>

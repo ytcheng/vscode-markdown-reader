@@ -10,6 +10,9 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
 
 ## 主要特色
 
+- **主题与字体可选**：Reader / GitHub 主题，浅色、深色或跟随 VS Code 配色，自定义本机字体和 12–32 px 字号。
+- **大文件模式**：默认在 1 MiB 时自动启用，将代码、公式和图表显示为源码以减少渲染开销。
+- **导出与打印**：导出带内嵌本地资源的 HTML，通过浏览器打印或保存 PDF。
 - **当前标签页直接阅读**：以整洁的文档视图打开 Markdown，不强制占用右侧分栏。
 - **目录与正文联动**：自动提取标题形成目录；阅读正文时，当前章节会同步高亮。
 - **自动刷新并尽量保留位置**：文件被 AI、其他程序或编辑器修改后，阅读视图自动刷新，并尽可能停留在原来的阅读位置。
@@ -25,7 +28,7 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
 
 ## 快速开始
 
-1. 从 VS Code Marketplace 安装 **Markdown Reader**。
+1. 从 VS Code Marketplace 安装 [**Markdown Reader: Focus Mode**](https://marketplace.visualstudio.com/items?itemName=chengjian.vscode-markdown-reader)。
 2. 打开任意 `.md` 文件。Markdown Reader 已注册为 Markdown 的默认阅读编辑器。
 3. 如果 VS Code 以文本编辑器打开文件，在编辑器标题栏菜单中选择 **Reopen Editor With…**，然后选择 **Markdown Reader**。
 
@@ -39,9 +42,30 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
 | 复制标题链接 | 点击标题旁的 **#** |
 | 切换 Source / Preview | <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd> |
 | 显示或隐藏目录 | 运行 **Markdown Reader: Toggle Table of Contents** |
+| 调整主题、字体和字号 | 右上角 **☰ → Reading Settings…** |
+| 导出 HTML | 右上角 **☰ → Export HTML…** |
+| 打印或保存 PDF | 右上角 **☰ → Print / Save as PDF…** |
 | 搜索已渲染的文档 | <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> |
 
 也可以通过命令面板（`Ctrl`/`Cmd` + `Shift` + `P`）搜索 **Markdown Reader**，运行所有相关命令。
+
+## 阅读设置、打印与导出
+
+正文右上角的 **☰** 菜单提供查看源码、**Print / Save as PDF…**、**Export HTML…**、**Reading Settings…**、反馈与关于。
+
+![右上角菜单：阅读设置、HTML 导出、打印与保存 PDF](assets/markdown-reader-menu-zh-CN.png)
+
+默认使用 **Reader + Light** 白色主题，目录及其滚动条背景为 `rgb(249, 250, 251)`。阅读设置弹窗支持 **Reader / GitHub** 排版主题，独立的浅色、深色与跟随 VS Code 配色，自定义本机正文字体，12–32 px 字号和正文宽度。标题随字号缩放，代码保持等宽字体；VS Code 高对比度始终优先。设置即时生效并自动保存：存在工作区覆盖时更新对应作用域，否则保存到用户设置；打开的阅读器会同步更新。
+
+![中文文档场景下的阅读设置：Reader、Light、字体、字号、正文宽度与大文件模式](assets/markdown-reader-settings-zh-CN.png)
+
+大文件模式生效时显示 **⚡**，点击可打开设置。模式会跳过语法高亮、公式和图表渲染，保留源码、目录、复制与搜索；关闭后恢复完整渲染。它降低渲染成本，但不对 Markdown 解析或全部 DOM 做分页。
+
+**导出 HTML** 会弹出保存对话框，内嵌样式、可读取的本地图片和公式字体；HTTPS 图片仍依赖网络。已完成渲染的 Mermaid 图表作为 SVG 图片保留；未完成或大文件模式下保留源码并提示。自定义系统字体不会打包到 HTML。
+
+**打印 / 保存 PDF** 会在默认浏览器打开临时 HTML，点击页面中的打印按钮后使用浏览器打印对话框。打印版式隐藏操作控件，采用浅色纸张样式、代码自动换行和分页优化。V0.3 不提供原生 PDF 文件生成；远程扩展环境请先导出 HTML 并下载到本机浏览器打印。
+
+命令面板也提供 **Markdown Reader: Reading Settings**、**Export HTML** 和 **Print / Save as PDF**，在阅读器激活时可用。
 
 ## 配置项
 
@@ -49,6 +73,12 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
 
 ```json
 {
+  "markdownReader.theme": "reader",
+  "markdownReader.colorMode": "light",
+  "markdownReader.fontFamily": "",
+  "markdownReader.fontSize": 16,
+  "markdownReader.largeFile.mode": "auto",
+  "markdownReader.largeFile.thresholdKb": 1024,
   "markdownReader.toc.enabled": true,
   "markdownReader.toc.maxDepth": 3,
   "markdownReader.toc.width": 260,
@@ -62,6 +92,13 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
 | `markdownReader.toc.maxDepth` | `3` | 目录展示到第几级标题（`1`–`6`）。 |
 | `markdownReader.toc.width` | `260` | 目录默认宽度，单位为像素（`180`–`480`）；也可以在阅读器中拖动调整。 |
 | `markdownReader.content.maxWidth` | `900` | 正文最大宽度，单位为像素（`560`–`1600`）。 |
+| `markdownReader.theme` | `reader` | `reader` / `github` 排版。 |
+| `markdownReader.colorMode` | `light` | `auto` / `light` / `dark` 配色。 |
+| `markdownReader.fontFamily` | `""` | 空字符串使用系统字体；也可填 `"Noto Sans SC", sans-serif` 等本机字体列表。 |
+| `markdownReader.fontSize` | `16` | 正文字号，12–32 px。 |
+| `markdownReader.largeFile.mode` | `auto` | `auto` / `on` / `off`。 |
+| `markdownReader.largeFile.thresholdKb` | `1024` | 自动开启阈值，按 UTF-8 字节数计算，单位 KiB。 |
+
 
 ## Markdown 支持范围
 

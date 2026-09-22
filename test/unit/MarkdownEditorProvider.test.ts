@@ -4,12 +4,14 @@ const vscode = vi.hoisted(() => {
   const state: {
     changeTextDocument?: (event: { document: unknown }) => void;
     fileChanged?: (uri: unknown) => void;
+    configurationChanged?: (event: { affectsConfiguration: (section: string) => boolean }) => void;
     watchers: Array<{ dispose: ReturnType<typeof vi.fn> }>;
   } = { watchers: [] };
   return {
   __state: state,
   workspace: {
     fs: { readFile: vi.fn(async () => Buffer.from('<!doctype html><html></html>')) },
+    onDidChangeConfiguration: vi.fn((handler) => { state.configurationChanged = handler; return { dispose: vi.fn() }; }),
     onDidChangeTextDocument: vi.fn((handler: (event: { document: unknown }) => void) => {
       state.changeTextDocument = handler;
       return { dispose: vi.fn() };
@@ -31,13 +33,13 @@ const vscode = vi.hoisted(() => {
   Uri: { joinPath: vi.fn(() => ({ toString: () => 'webview-resource' })) },
   RelativePattern: vi.fn(),
   Disposable: { from: vi.fn((...disposables: Array<{ dispose: () => void }>) => ({ dispose: () => disposables.forEach((disposable) => disposable.dispose()) })) },
-  window: { activeTextEditor: undefined, showTextDocument: vi.fn() },
+  window: { activeTextEditor: undefined, showTextDocument: vi.fn(), showErrorMessage: vi.fn() },
   Position: class { constructor(public line: number, public character: number) {} },
   Selection: class { constructor(public start: unknown, public end: unknown) {} },
   TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
   commands: { executeCommand: vi.fn() },
   env: { openExternal: vi.fn() },
-  ConfigurationTarget: { Global: true }
+  ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 }
   };
 });
 
@@ -221,4 +223,60 @@ it('opens source in the originating editor group and clamps the requested line',
     viewColumn: 2, preview: false, selection: expect.objectContaining({ start: expect.objectContaining({ line: 3, character: 0 }) })
   })));
   expect(editor.revealRange).toHaveBeenCalled();
+});
+
+
+it('loads resource-scoped settings and broadcasts workspace configuration changes', async () => {
+  const get = vi.fn((key: string, fallback: unknown) => key === 'theme' ? 'github' : fallback);
+  vscode.workspace.getConfiguration.mockReturnValue({ get, update: vi.fn() });
+  const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+  const panels: Array<{ webview: { postMessage: ReturnType<typeof vi.fn> } }> = [];
+  const receivers: Array<(value: unknown) => void> = [];
+  for (const name of ['a', 'b']) {
+    const panel = {
+      active: true,
+      webview: { cspSource: 'webview:', asWebviewUri: () => ({ toString: () => 'resource' }), postMessage: vi.fn(async () => true), onDidReceiveMessage: (handler: (value: unknown) => void) => { receivers.push(handler); } },
+      onDidDispose: vi.fn(), onDidChangeViewState: vi.fn()
+    };
+    await provider.resolveCustomTextEditor({ uri: { toString: () => `file:///${name}.md` }, getText: () => '# Title' } as never, panel as never);
+    panels.push(panel);
+  }
+  receivers.forEach((receive) => receive({ type: 'ready' }));
+  await vi.waitFor(() => panels.forEach((panel) => expect(panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'setReaderSettings', settings: expect.objectContaining({ theme: 'github' }) }))));
+  panels.forEach((panel) => panel.webview.postMessage.mockClear());
+  get.mockImplementation((key, fallback) => key === 'fontSize' ? 24 : fallback);
+  vscode.__state.configurationChanged!({ affectsConfiguration: () => true });
+  await vi.waitFor(() => panels.forEach((panel) => expect(panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'setReaderSettings', settings: expect.objectContaining({ fontSize: 24 }) }))));
+});
+
+it('exports an immutable source snapshot and drops stale diagram images', async () => {
+  const { ExportService } = await import('../../src/export/ExportService.js');
+  const exported = vi.spyOn(ExportService.prototype, 'exportDocument').mockResolvedValue();
+  let receive: (value: unknown) => void = () => undefined;
+  let source = '# Original\n\n```mermaid\ngraph TD; A-->B\n```';
+  const uri = { toString: () => 'file:///snapshot.md' };
+  const document = { uri, version: 1, getText: () => source };
+  vscode.workspace.getConfiguration.mockReturnValue({ get: vi.fn((_key, fallback) => fallback), update: vi.fn() });
+  vscode.workspace.openTextDocument.mockResolvedValue(document);
+  const postMessage = vi.fn(async () => true);
+  const panel = {
+    active: true,
+    webview: { cspSource: 'webview:', asWebviewUri: () => ({ toString: () => 'resource' }), postMessage, onDidReceiveMessage: (handler: typeof receive) => { receive = handler; } },
+    onDidDispose: vi.fn(), onDidChangeViewState: vi.fn()
+  };
+  const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+  await provider.resolveCustomTextEditor(document as never, panel as never);
+  receive({ type: 'ready' });
+  await vi.waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'render' })));
+  const diagrams = ['data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C%2Fsvg%3E'];
+  receive({ type: 'exportHtml', revision: 1, diagrams });
+  await vi.waitFor(() => expect(exported).toHaveBeenCalledTimes(1));
+  expect(exported.mock.calls[0][2]).toEqual(diagrams);
+  source = '# Changed\n\n```mermaid\ngraph TD; C-->D\n```';
+  expect(exported.mock.calls[0][0].getText()).toContain('Original');
+  receive({ type: 'exportHtml', revision: 1, diagrams });
+  await vi.waitFor(() => expect(exported).toHaveBeenCalledTimes(2));
+  expect(exported.mock.calls[1][2]).toEqual([]);
+  expect(exported.mock.calls[1][0].getText()).toContain('Changed');
+  exported.mockRestore();
 });

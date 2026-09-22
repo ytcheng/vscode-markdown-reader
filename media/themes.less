@@ -1,0 +1,96 @@
+// V0.3 themes are scoped by data attributes, independent of VS Code body classes.
+body[data-reader-color='light'] {
+  .reader-light();
+  --reader-background: #fff;
+  --reader-foreground: #24292f;
+  --reader-code-background: #e8eef8;
+  color-scheme: light;
+}
+body[data-reader-color='dark'] {
+  .reader-dark();
+  --reader-background: #161b22;
+  --reader-foreground: #e6edf3;
+  --reader-code-background: #202938;
+  color-scheme: dark;
+}
+body[data-reader-theme='github'][data-reader-color='light'] {
+  --primary-color: #0969da;
+  --primary-color-hover: #0550ae;
+  --reader-code-background: #f6f8fa;
+  --bg-code: #eff1f3;
+  --bg-stripe: #f6f8fa;
+}
+body[data-reader-theme='github'][data-reader-color='dark'] {
+  --primary-color: #58a6ff;
+  --primary-color-hover: #79c0ff;
+  --reader-background: #0d1117;
+  --reader-code-background: #161b22;
+  --bg-code: #262c36;
+  --bg-stripe: #161b22;
+  --border-color: #30363d;
+}
+body[data-reader-color] {
+  color: var(--reader-foreground, var(--vscode-editor-foreground, #24292f));
+  background: var(--reader-background, var(--vscode-editor-background, #fff));
+  scrollbar-color: var(--text-muted) var(--reader-background);
+  .toc, .toc-drawer:not([hidden]) { background: var(--reader-background); }
+  .toc a, .toc-drawer a, .toc-toggle { color: inherit; }
+  .toc a[aria-current='location'], .toc-drawer a[aria-current='location'] { color: var(--primary-color); }
+  .markdown-body {
+    color: inherit;
+    font-family: var(--reader-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    font-size: var(--reader-font-size, 16px);
+    h1 { font-size: 2em; } h2 { font-size: 1.5em; } h3 { font-size: 1.25em; }
+    h4 { font-size: 1em; } h5 { font-size: 0.875em; } h6 { font-size: 0.8125em; }
+    blockquote { color: var(--text-muted) !important; background: transparent !important; }
+    pre, pre > code, pre.hljs-pre, .hljs { color: var(--reader-foreground) !important; background: var(--reader-code-background) !important; }
+    code { color: var(--primary-color); background: var(--bg-code); font-size: 0.88em; }
+    pre { font-size: 0.88em; } pre code { font-size: 1em; }
+    pre, code { font-family: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); }
+  }
+  *, *::before, *::after { scrollbar-color: var(--text-muted) var(--reader-background); }
+  ::-webkit-scrollbar-track { background: var(--reader-background); }
+  ::-webkit-scrollbar-thumb { background: var(--text-muted); border-color: var(--reader-background); }
+}
+body[data-reader-theme='github'] .markdown-body {
+  line-height: 1.5;
+  h1, h2 { padding-bottom: 0.3em; border-bottom: 1px solid var(--border-color); }
+  h1, h2, h3, h4, h5, h6 { font-weight: 600; }
+  blockquote { border-left: 0.25em solid var(--border-color); padding: 0 1em; }
+  a { text-decoration: none; } a:hover { text-decoration: underline; }
+  pre { padding: 16px; border-radius: 6px; }
+  th, td { padding: 6px 13px; border: 1px solid var(--border-color); }
+  tr:nth-child(2n) { background: var(--bg-stripe); }
+  code { color: inherit; border-radius: 6px; }
+}
+@media screen {
+  body[data-reader-color='dark'] #document .hljs span { color: var(--shiki-dark, inherit) !important; }
+}
+body[data-reader-color='high-contrast'] {
+  --reader-background: var(--vscode-editor-background, #000);
+  --reader-foreground: var(--vscode-editor-foreground, #fff);
+  --reader-code-background: var(--vscode-editor-background, #000);
+  --primary-color: var(--vscode-textLink-foreground, #6fc3df);
+  --text-muted: var(--vscode-editor-foreground, #fff);
+  --border-color: var(--vscode-contrastBorder, #fff);
+  --bg-code: var(--vscode-editor-background, #000);
+  --bg-stripe: var(--vscode-editor-background, #000);
+  --bg-block: var(--vscode-editor-background, #000);
+  .reader-actions #reader-menu-toggle, .reader-actions #reader-performance, dialog#reader-settings button { border: 1px solid var(--border-color); }
+  .markdown-body { color: var(--reader-foreground); }
+}
+.reader-large-file .markdown-body > :not(h1, h2, h3, h4, h5, h6) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
+}
+
+// Keep the original white Reader surface, with a subtly separated directory.
+body[data-reader-theme='reader'][data-reader-color='light'] {
+  .toc, .toc-drawer:not([hidden]) {
+    --reader-background: rgb(249, 250, 251);
+    background: var(--reader-background);
+    scrollbar-color: var(--text-muted) var(--reader-background);
+    &::-webkit-scrollbar-track, &::-webkit-scrollbar-corner { background: var(--reader-background); }
+    &::-webkit-scrollbar-thumb { border-color: var(--reader-background); }
+  }
+}

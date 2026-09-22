@@ -1085,3 +1085,588 @@ body.vscode-high-contrast-light .markdown-body .hljs span {
 .heading-actions button[data-copy-state="failed"] {
   color: var(--danger-color);
 }
+body[data-reader-color='light'] {
+  --primary-color: #607cd2;
+  --primary-color-hover: #4c68bb;
+  --primary-color-alpha-10: rgba(96, 124, 210, 0.1);
+  --text-muted: #6e7781;
+  --text-disabled: #d8dee4;
+  --border-color: #d0d7de;
+  --bg-image: #f8f9fa;
+  --bg-code: #e6edf8;
+  --bg-stripe: #f6f8fa;
+  --bg-block: #f8f9fa;
+  --highlight-color: #fff07e;
+  --opacity-image: 1;
+  --color-white: #ffffff;
+  --important-color: #a16cfd;
+  --important-color-alpha-10: rgba(161, 108, 253, 0.1);
+  --success-color: #2fc178;
+  --success-color-alpha-10: rgba(47, 193, 120, 0.1);
+  --warning-color: #d98b00;
+  --warning-color-alpha-10: rgba(217, 139, 0, 0.1);
+  --danger-color: #df4c4c;
+  --danger-color-alpha-10: rgba(223, 76, 76, 0.1);
+  /*
+
+Atom One Dark by Daniel Gamage
+Original One Dark Syntax theme from https://github.com/atom/one-light-syntax
+
+*/
+  --hljs-base: hsl(220, 29%, 97%);
+  --hljs-mono-1: hsl(220, 8%, 20%);
+  --hljs-mono-2: hsl(220, 6%, 44%);
+  --hljs-mono-3: hsl(220, 4%, 54%);
+  --hljs-hue-1: hsl(198, 99%, 37%);
+  --hljs-hue-2: hsl(221, 87%, 60%);
+  --hljs-hue-3: hsl(301, 63%, 40%);
+  --hljs-hue-4: hsl(119, 34%, 47%);
+  --hljs-hue-5: hsl(5, 74%, 59%);
+  --hljs-hue-5-2: hsl(344, 84%, 43%);
+  --hljs-hue-6: hsl(35, 99%, 36%);
+  --hljs-hue-6-2: hsl(35, 99%, 40%);
+  --reader-background: #fff;
+  --reader-foreground: #24292f;
+  --reader-code-background: #e8eef8;
+  color-scheme: light;
+}
+body[data-reader-color='dark'] {
+  --primary-color: #8ea7ff;
+  --primary-color-hover: #b5c5ff;
+  --primary-color-alpha-10: rgba(142, 167, 255, 0.16);
+  --text-muted: #9da7b3;
+  --text-disabled: #4b5563;
+  --border-color: #3b4654;
+  --bg-image: #1d2530;
+  --bg-code: #202938;
+  --bg-stripe: #1c2531;
+  --bg-block: #1c2531;
+  --highlight-color: #6d5c00;
+  --opacity-image: 0.92;
+  --color-white: #ffffff;
+  --important-color: #c4a2ff;
+  --important-color-alpha-10: rgba(196, 162, 255, 0.16);
+  --success-color: #74d9a1;
+  --success-color-alpha-10: rgba(116, 217, 161, 0.16);
+  --warning-color: #f6bb42;
+  --warning-color-alpha-10: rgba(246, 187, 66, 0.16);
+  --danger-color: #ff8e8e;
+  --danger-color-alpha-10: rgba(255, 142, 142, 0.16);
+  /*
+
+Atom One Dark by Daniel Gamage
+Original One Dark Syntax theme from https://github.com/atom/one-dark-syntax
+
+*/
+  --hljs-base: hsl(220, 18%, 14%);
+  --hljs-mono-1: hsl(220, 17%, 79%);
+  --hljs-mono-2: hsl(220, 9%, 55%);
+  --hljs-mono-3: hsl(220, 8%, 45%);
+  --hljs-hue-1: hsl(187, 60%, 61%);
+  --hljs-hue-2: hsl(212, 100%, 74%);
+  --hljs-hue-3: hsl(261, 76%, 76%);
+  --hljs-hue-4: hsl(135, 46%, 66%);
+  --hljs-hue-5: hsl(354, 92%, 72%);
+  --hljs-hue-5-2: hsl(354, 71%, 66%);
+  --hljs-hue-6: hsl(25, 100%, 72%);
+  --hljs-hue-6-2: hsl(25, 73%, 65%);
+  --reader-background: #161b22;
+  --reader-foreground: #e6edf3;
+  --reader-code-background: #202938;
+  color-scheme: dark;
+}
+body[data-reader-theme='github'][data-reader-color='light'] {
+  --primary-color: #0969da;
+  --primary-color-hover: #0550ae;
+  --reader-code-background: #f6f8fa;
+  --bg-code: #eff1f3;
+  --bg-stripe: #f6f8fa;
+}
+body[data-reader-theme='github'][data-reader-color='dark'] {
+  --primary-color: #58a6ff;
+  --primary-color-hover: #79c0ff;
+  --reader-background: #0d1117;
+  --reader-code-background: #161b22;
+  --bg-code: #262c36;
+  --bg-stripe: #161b22;
+  --border-color: #30363d;
+}
+body[data-reader-color] {
+  color: var(--reader-foreground, var(--vscode-editor-foreground, #24292f));
+  background: var(--reader-background, var(--vscode-editor-background, #fff));
+  scrollbar-color: var(--text-muted) var(--reader-background);
+}
+body[data-reader-color] .toc,
+body[data-reader-color] .toc-drawer:not([hidden]) {
+  background: var(--reader-background);
+}
+body[data-reader-color] .toc a,
+body[data-reader-color] .toc-drawer a,
+body[data-reader-color] .toc-toggle {
+  color: inherit;
+}
+body[data-reader-color] .toc a[aria-current='location'],
+body[data-reader-color] .toc-drawer a[aria-current='location'] {
+  color: var(--primary-color);
+}
+body[data-reader-color] .markdown-body {
+  color: inherit;
+  font-family: var(--reader-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  font-size: var(--reader-font-size, 16px);
+}
+body[data-reader-color] .markdown-body h1 {
+  font-size: 2em;
+}
+body[data-reader-color] .markdown-body h2 {
+  font-size: 1.5em;
+}
+body[data-reader-color] .markdown-body h3 {
+  font-size: 1.25em;
+}
+body[data-reader-color] .markdown-body h4 {
+  font-size: 1em;
+}
+body[data-reader-color] .markdown-body h5 {
+  font-size: 0.875em;
+}
+body[data-reader-color] .markdown-body h6 {
+  font-size: 0.8125em;
+}
+body[data-reader-color] .markdown-body blockquote {
+  color: var(--text-muted) !important;
+  background: transparent !important;
+}
+body[data-reader-color] .markdown-body pre,
+body[data-reader-color] .markdown-body pre > code,
+body[data-reader-color] .markdown-body pre.hljs-pre,
+body[data-reader-color] .markdown-body .hljs {
+  color: var(--reader-foreground) !important;
+  background: var(--reader-code-background) !important;
+}
+body[data-reader-color] .markdown-body code {
+  color: var(--primary-color);
+  background: var(--bg-code);
+  font-size: 0.88em;
+}
+body[data-reader-color] .markdown-body pre {
+  font-size: 0.88em;
+}
+body[data-reader-color] .markdown-body pre code {
+  font-size: 1em;
+}
+body[data-reader-color] .markdown-body pre,
+body[data-reader-color] .markdown-body code {
+  font-family: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+}
+body[data-reader-color] *,
+body[data-reader-color] *::before,
+body[data-reader-color] *::after {
+  scrollbar-color: var(--text-muted) var(--reader-background);
+}
+body[data-reader-color] ::-webkit-scrollbar-track {
+  background: var(--reader-background);
+}
+body[data-reader-color] ::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-color: var(--reader-background);
+}
+body[data-reader-theme='github'] .markdown-body {
+  line-height: 1.5;
+}
+body[data-reader-theme='github'] .markdown-body h1,
+body[data-reader-theme='github'] .markdown-body h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-color);
+}
+body[data-reader-theme='github'] .markdown-body h1,
+body[data-reader-theme='github'] .markdown-body h2,
+body[data-reader-theme='github'] .markdown-body h3,
+body[data-reader-theme='github'] .markdown-body h4,
+body[data-reader-theme='github'] .markdown-body h5,
+body[data-reader-theme='github'] .markdown-body h6 {
+  font-weight: 600;
+}
+body[data-reader-theme='github'] .markdown-body blockquote {
+  border-left: 0.25em solid var(--border-color);
+  padding: 0 1em;
+}
+body[data-reader-theme='github'] .markdown-body a {
+  text-decoration: none;
+}
+body[data-reader-theme='github'] .markdown-body a:hover {
+  text-decoration: underline;
+}
+body[data-reader-theme='github'] .markdown-body pre {
+  padding: 16px;
+  border-radius: 6px;
+}
+body[data-reader-theme='github'] .markdown-body th,
+body[data-reader-theme='github'] .markdown-body td {
+  padding: 6px 13px;
+  border: 1px solid var(--border-color);
+}
+body[data-reader-theme='github'] .markdown-body tr:nth-child(2n) {
+  background: var(--bg-stripe);
+}
+body[data-reader-theme='github'] .markdown-body code {
+  color: inherit;
+  border-radius: 6px;
+}
+@media screen {
+  body[data-reader-color='dark'] #document .hljs span {
+    color: var(--shiki-dark, inherit) !important;
+  }
+}
+body[data-reader-color='high-contrast'] {
+  --reader-background: var(--vscode-editor-background, #000);
+  --reader-foreground: var(--vscode-editor-foreground, #fff);
+  --reader-code-background: var(--vscode-editor-background, #000);
+  --primary-color: var(--vscode-textLink-foreground, #6fc3df);
+  --text-muted: var(--vscode-editor-foreground, #fff);
+  --border-color: var(--vscode-contrastBorder, #fff);
+  --bg-code: var(--vscode-editor-background, #000);
+  --bg-stripe: var(--vscode-editor-background, #000);
+  --bg-block: var(--vscode-editor-background, #000);
+}
+body[data-reader-color='high-contrast'] .reader-actions #reader-menu-toggle,
+body[data-reader-color='high-contrast'] .reader-actions #reader-performance,
+body[data-reader-color='high-contrast'] dialog#reader-settings button {
+  border: 1px solid var(--border-color);
+}
+body[data-reader-color='high-contrast'] .markdown-body {
+  color: var(--reader-foreground);
+}
+.reader-large-file .markdown-body > :not(h1, h2, h3, h4, h5, h6) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
+}
+body[data-reader-theme='reader'][data-reader-color='light'] .toc,
+body[data-reader-theme='reader'][data-reader-color='light'] .toc-drawer:not([hidden]) {
+  --reader-background: #f9fafb;
+  background: var(--reader-background);
+  scrollbar-color: var(--text-muted) var(--reader-background);
+}
+body[data-reader-theme='reader'][data-reader-color='light'] .toc::-webkit-scrollbar-track,
+body[data-reader-theme='reader'][data-reader-color='light'] .toc-drawer:not([hidden])::-webkit-scrollbar-track,
+body[data-reader-theme='reader'][data-reader-color='light'] .toc::-webkit-scrollbar-corner,
+body[data-reader-theme='reader'][data-reader-color='light'] .toc-drawer:not([hidden])::-webkit-scrollbar-corner {
+  background: var(--reader-background);
+}
+body[data-reader-theme='reader'][data-reader-color='light'] .toc::-webkit-scrollbar-thumb,
+body[data-reader-theme='reader'][data-reader-color='light'] .toc-drawer:not([hidden])::-webkit-scrollbar-thumb {
+  border-color: var(--reader-background);
+}
+.reader-actions {
+  position: fixed;
+  z-index: 8;
+  top: 12px;
+  right: 20px;
+  display: flex;
+  gap: 6px;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--reader-foreground, #24292f);
+}
+.reader-actions #reader-menu-toggle,
+.reader-actions #reader-performance {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--bg-block, #f3f3f3);
+  color: var(--text-muted, #858b93);
+  cursor: pointer;
+  font-size: 16px;
+}
+.reader-actions #reader-menu-toggle:hover,
+.reader-actions #reader-menu-toggle[aria-expanded='true'] {
+  color: var(--reader-foreground);
+  background: var(--bg-stripe);
+}
+.reader-actions #reader-menu {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 218px;
+  max-width: calc(100vw - 32px);
+  padding: 7px;
+  background: var(--reader-background, #fff);
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #0002, 0 2px 5px #0001;
+}
+.reader-actions #reader-menu hr {
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  margin: 6px 8px;
+}
+.reader-actions #reader-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+.reader-actions #reader-menu button:hover:not(:disabled),
+.reader-actions #reader-menu button:focus-visible {
+  background: var(--bg-stripe);
+}
+.reader-actions #reader-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.reader-actions [hidden] {
+  display: none !important;
+}
+dialog#reader-settings {
+  width: min(440px, calc(100vw - 48px));
+  max-height: calc(100vh - 56px);
+  padding: 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  color: var(--reader-foreground, #24292f);
+  background: var(--reader-background, #fff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 12px;
+  box-shadow: 0 20px 70px #0004;
+  font: 13px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+dialog#reader-settings::backdrop {
+  background: #0005;
+}
+dialog#reader-settings header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+dialog#reader-settings h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+dialog#reader-settings button,
+dialog#reader-settings select,
+dialog#reader-settings input {
+  font: inherit;
+  color: inherit;
+}
+dialog#reader-settings select,
+dialog#reader-settings input:not([type='range']) {
+  border: 1px solid var(--border-color);
+  background: var(--reader-background);
+  border-radius: 5px;
+  padding: 5px 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+dialog#reader-settings button {
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-block);
+  padding: 5px 8px;
+}
+dialog#reader-settings #reader-settings-close {
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  padding: 0 4px;
+}
+dialog#reader-settings .settings-fields {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px 12px;
+}
+dialog#reader-settings .font-size-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+dialog#reader-settings .font-size-control input {
+  width: 56px;
+  text-align: center;
+}
+dialog#reader-settings .font-size-control button {
+  width: 30px;
+}
+dialog#reader-settings .width-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+dialog#reader-settings .width-control input {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--primary-color);
+}
+dialog#reader-settings .width-control output {
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+dialog#reader-settings .settings-note {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 18px 0 0;
+}
+dialog#reader-settings footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+dialog#reader-settings [hidden] {
+  display: none !important;
+}
+dialog#reader-settings :is(button, input, select):focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+body:has(.reader-actions) .search-bar {
+  top: 54px;
+}
+@media (max-width: 420px) {
+  .reader-actions {
+    right: 12px;
+  }
+  dialog#reader-settings {
+    padding: 18px;
+    width: calc(100vw - 24px);
+  }
+  dialog#reader-settings .settings-fields {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  dialog#reader-settings .settings-fields > label {
+    margin-top: 8px;
+  }
+}
+button#reader-print {
+  margin: 16px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--bg-block, #f6f8fa);
+  cursor: pointer;
+}
+.reader-export-warnings {
+  max-width: 900px;
+  margin: 16px auto;
+  padding: 12px;
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: 6px;
+  font: 14px/1.5 sans-serif;
+}
+@media print {
+  @page {
+    margin: 16mm;
+  }
+  html,
+  body,
+  body[data-reader-color] {
+    color: #24292f !important;
+    background: #fff !important;
+  }
+  body[data-reader-color] {
+    --reader-foreground: #24292f !important;
+    --primary-color: #0969da !important;
+    --text-muted: #57606a !important;
+    --border-color: #d0d7de !important;
+    --bg-stripe: #f6f8fa !important;
+    --bg-code: #f6f8fa !important;
+    --reader-background: #fff !important;
+    --reader-code-background: #f6f8fa !important;
+  }
+  .toc,
+  .toc-resizer,
+  .toc-toggle,
+  .toc-drawer,
+  .toc-drawer-backdrop,
+  .reader-actions,
+  dialog#reader-settings,
+  .search-bar,
+  .heading-actions,
+  .copy-code-btn,
+  button#reader-print,
+  .reader-export-warnings,
+  .export-toolbar,
+  .mermaid-staging {
+    display: none !important;
+  }
+  .reader {
+    display: block !important;
+    min-height: 0;
+  }
+  body .markdown-body {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    color: #24292f;
+  }
+  body .markdown-body * {
+    content-visibility: visible !important;
+    contain: none !important;
+  }
+  body .markdown-body :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+  body .markdown-body :is(p, li) {
+    orphans: 3;
+    widows: 3;
+  }
+  body .markdown-body pre,
+  body .markdown-body pre > code,
+  body .markdown-body pre.hljs-pre,
+  body .markdown-body .hljs {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow: visible;
+    color: #24292f !important;
+    background: #f6f8fa !important;
+  }
+  body .markdown-body code {
+    color: #24292f;
+    background: #f6f8fa;
+  }
+  body .markdown-body table {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    overflow: visible;
+  }
+  body .markdown-body th,
+  body .markdown-body td {
+    overflow-wrap: anywhere;
+  }
+  body .markdown-body tr {
+    break-inside: avoid;
+  }
+  body .markdown-body thead {
+    display: table-header-group;
+  }
+  body .markdown-body img {
+    max-width: 100%;
+    break-inside: avoid;
+  }
+  body .markdown-body blockquote {
+    background: transparent !important;
+  }
+  body .markdown-body .katex-display {
+    overflow: visible;
+  }
+}

@@ -1,0 +1,22 @@
+button#reader-print { margin: 16px; padding: 10px 16px; border: 1px solid var(--border-color, #d0d7de); border-radius: 6px; color: inherit; background: var(--bg-block, #f6f8fa); cursor: pointer; }
+.reader-export-warnings { max-width: 900px; margin: 16px auto; padding: 12px; border: 1px solid var(--border-color, #d0d7de); border-radius: 6px; font: 14px/1.5 sans-serif; }
+@media print {
+  @page { margin: 16mm; }
+  html, body, body[data-reader-color] { color: #24292f !important; background: #fff !important; }
+  body[data-reader-color] { --reader-foreground: #24292f !important; --primary-color: #0969da !important; --text-muted: #57606a !important; --border-color: #d0d7de !important; --bg-stripe: #f6f8fa !important; --bg-code: #f6f8fa !important; --reader-background: #fff !important; --reader-code-background: #f6f8fa !important; }
+  .toc, .toc-resizer, .toc-toggle, .toc-drawer, .toc-drawer-backdrop, .reader-actions, dialog#reader-settings, .search-bar, .heading-actions, .copy-code-btn, button#reader-print, .reader-export-warnings, .export-toolbar, .mermaid-staging { display: none !important; }
+  .reader { display: block !important; min-height: 0; }
+  body .markdown-body { max-width: none; padding: 0; margin: 0; color: #24292f; }
+  body .markdown-body * { content-visibility: visible !important; contain: none !important; }
+  body .markdown-body :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; }
+  body .markdown-body :is(p, li) { orphans: 3; widows: 3; }
+  body .markdown-body pre, body .markdown-body pre > code, body .markdown-body pre.hljs-pre, body .markdown-body .hljs { white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible; color: #24292f !important; background: #f6f8fa !important; }
+  body .markdown-body code { color: #24292f; background: #f6f8fa; }
+  body .markdown-body table { display: table; width: 100%; table-layout: fixed; overflow: visible; }
+  body .markdown-body th, body .markdown-body td { overflow-wrap: anywhere; }
+  body .markdown-body tr { break-inside: avoid; }
+  body .markdown-body thead { display: table-header-group; }
+  body .markdown-body img { max-width: 100%; break-inside: avoid; }
+  body .markdown-body blockquote { background: transparent !important; }
+  body .markdown-body .katex-display { overflow: visible; }
+}

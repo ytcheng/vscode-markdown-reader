@@ -11,7 +11,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('markdownReader.openPreview', () => provider.openPreview()),
     vscode.commands.registerCommand('markdownReader.openSource', () => provider.openSource()),
     vscode.commands.registerCommand('markdownReader.togglePreview', () => provider.togglePreview()),
-    vscode.commands.registerCommand('markdownReader.toggleToc', () => provider.toggleToc())
+    vscode.commands.registerCommand('markdownReader.toggleToc', () => provider.toggleToc()),
+    vscode.commands.registerCommand('markdownReader.readingSettings', () => provider.showSettings()),
+    vscode.commands.registerCommand('markdownReader.exportHtml', () => provider.requestExport('exportHtml')),
+    vscode.commands.registerCommand('markdownReader.print', () => provider.requestExport('print'))
   );
 }
 

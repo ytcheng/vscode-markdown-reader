@@ -17,4 +17,9 @@ export interface RenderResult {
   styles?: string;
   headings: HeadingItem[];
   resources: RenderResource[];
+  largeFile?: boolean;
+}
+
+export interface RenderOptions {
+  largeFile?: boolean;
 }
