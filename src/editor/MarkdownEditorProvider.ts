@@ -21,7 +21,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   #activePanel: vscode.WebviewPanel | undefined;
 
   constructor(private readonly context: vscode.ExtensionContext) {
-    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => this.#sessions.get(event.document.uri.toString())?.schedule()));
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => {
+      const session = this.#sessions.get(event.document.uri.toString());
+      if (!session) return;
+      session.setTextProvider(() => event.document.getText());
+      session.schedule();
+    }));
   }
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
@@ -89,6 +94,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       session = new DocumentSession(() => document.getText(), this.#renderer);
       this.#sessions.set(key, session);
     }
+    session.setTextProvider(() => document.getText());
     return session;
   }
 
