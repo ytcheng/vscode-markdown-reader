@@ -3,16 +3,41 @@
   "displayName": "Markdown Reader",
   "description": "Open Markdown as a polished reading view in the current VS Code tab.",
   "version": "0.1.0",
-  "publisher": "local",
+  "publisher": "chengjian",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ytcheng/vscode-markdown-reader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ytcheng/vscode-markdown-reader/issues"
+  },
+  "homepage": "https://github.com/ytcheng/vscode-markdown-reader#readme",
   "license": "MIT",
-  "engines": {
-    "vscode": "^1.100.0",
-    "node": ">=22.22.2"
+  "icon": "assets/markdown-reader-icon.png",
+  "galleryBanner": {
+    "color": "#24345F",
+    "theme": "dark"
   },
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "markdown",
+    "markdown reader",
+    "markdown preview",
+    "markdown viewer",
+    "reading mode",
+    "table of contents",
+    "toc",
+    "documentation",
+    "notes"
+  ],
+  "pricing": "Free",
+  "engines": {
+    "vscode": "^1.100.0",
+    "node": ">=22.22.2"
+  },
   "activationEvents": [
     "onCustomEditor:markdownReader.preview"
   ],
