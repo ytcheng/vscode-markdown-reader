@@ -53,14 +53,18 @@ Expected: FAIL，提示 `setTextProvider` 尚不存在。
 
 - [ ] **Step 3: 实现最小会话接口**
 
-在 `src/editor/DocumentSession.ts` 将构造参数改为可写私有字段，并新增：
+在 `src/editor/DocumentSession.ts` 新增可写私有字段，并更新构造函数：
 
 ```ts
+#getText: () => string;
+
 constructor(
-  private #getText: () => string,
+  getText: () => string,
   private readonly renderer: Renderer,
   private readonly debounceMs = 200
-) {}
+) {
+  this.#getText = getText;
+}
 
 get hasPanels(): boolean {
   return this.#panels.size > 0;
