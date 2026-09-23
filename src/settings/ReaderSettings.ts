@@ -46,7 +46,9 @@ export function isEditorFontSize(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 6 && value <= 100;
 }
 export function effectiveFontSize(settings: ReaderSettings): number {
-  return settings.fontSizeMode === 'editor' ? settings.editorFontSize ?? 14 : settings.fontSize;
+  // The reader uses a proportional UI font while the editor uses a monospaced font;
+  // a 1px optical adjustment makes equal nominal sizes appear closer in height.
+  return settings.fontSizeMode === 'editor' ? (settings.editorFontSize ?? 14) + 1 : settings.fontSize;
 }
 export function useLargeFileMode(source: string, settings: ReaderSettings): boolean {
   return settings.largeFileMode === 'on' || (settings.largeFileMode === 'auto' && new TextEncoder().encode(source).length >= settings.largeFileThresholdKb * 1024);

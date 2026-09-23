@@ -23,7 +23,9 @@ it('follows the VS Code editor font size by default', () => {
   expect(get<HTMLSelectElement>('reader-font-size-mode').value).toBe('editor');
   expect(get('reader-font-size-control').hidden).toBe(true);
   expect(get('reader-font-size-follow-note').hidden).toBe(false);
-  expect(document.body.style.getPropertyValue('--reader-font-size')).toBe('19px');
+  expect(document.body.style.getPropertyValue('--reader-font-size')).toBe('20px');
+  expect(get('reader-editor-font-size-value').textContent).toBe('19px');
+  expect(get('reader-effective-font-size-value').textContent).toBe('20px');
 });
 it('opens the menu with keyboard navigation and returns focus on Escape', () => {
   get('reader-menu-toggle').click();

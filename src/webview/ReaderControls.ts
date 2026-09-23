@@ -49,7 +49,8 @@ export class ReaderControls {
     this.get('reader-font-size-label').hidden = followsEditor;
     this.get('reader-font-size-control').hidden = followsEditor;
     this.get('reader-font-size-follow-note').hidden = !followsEditor;
-    this.get('reader-editor-font-size-value').textContent = `${effectiveFontSize(this.#settings)}px`;
+    this.get('reader-editor-font-size-value').textContent = `${this.#settings.editorFontSize ?? 14}px`;
+    this.get('reader-effective-font-size-value').textContent = `${effectiveFontSize(this.#settings)}px`;
     this.get('reader-width-value').textContent = `${this.#settings.contentMaxWidth}px`;
     this.get<HTMLButtonElement>('reader-font-smaller').disabled = this.#settings.fontSize <= 12;
     this.get<HTMLButtonElement>('reader-font-larger').disabled = this.#settings.fontSize >= 32;
