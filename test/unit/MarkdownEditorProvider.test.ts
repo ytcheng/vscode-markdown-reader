@@ -280,3 +280,73 @@ it('exports an immutable source snapshot and drops stale diagram images', async 
   expect(exported.mock.calls[1][0].getText()).toContain('Changed');
   exported.mockRestore();
 });
+
+it('stops initializing when the preview closes while its frame resource is loading', async () => {
+  type FrameBytes = Awaited<ReturnType<typeof vscode.workspace.fs.readFile>>;
+  let finishRead: ((bytes: FrameBytes) => void) | undefined;
+  vscode.workspace.fs.readFile.mockImplementationOnce(() => new Promise<FrameBytes>((resolve) => { finishRead = resolve; }));
+  let disposePanel: (() => void) | undefined;
+  let disposed = false;
+  const webview = {
+    cspSource: 'webview:', options: {}, html: '',
+    asWebviewUri: vi.fn(() => ({ toString: () => 'resource' })),
+    postMessage: vi.fn(async () => true), onDidReceiveMessage: vi.fn()
+  };
+  const panel = {
+    get webview() {
+      if (disposed) throw new Error('Webview is disposed');
+      return webview;
+    },
+    onDidDispose: vi.fn((handler: () => void) => { disposePanel = handler; }),
+    onDidChangeViewState: vi.fn()
+  };
+  const document = { uri: { toString: () => 'file:///closing.md' }, getText: () => '# Closing' };
+  const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+
+  const resolving = provider.resolveCustomTextEditor(document as never, panel as never);
+  await vi.waitFor(() => expect(finishRead).toBeDefined());
+  disposed = true;
+  disposePanel?.();
+  finishRead!(Buffer.from('<!doctype html>'));
+
+  await expect(resolving).resolves.toBeUndefined();
+  expect(webview.postMessage).not.toHaveBeenCalled();
+});
+
+it('does not report a disposed Webview while a ready message is being handled', async () => {
+  let disposePanel: (() => void) | undefined;
+  let receive: ((message: unknown) => void) | undefined;
+  let failPost: ((error: Error) => void) | undefined;
+  let disposed = false;
+  const postMessage = vi.fn().mockImplementationOnce(() => new Promise<boolean>((_resolve, reject) => { failPost = reject; }))
+    .mockImplementation(async () => {
+      if (disposed) throw new Error('Webview is disposed');
+      return true;
+    });
+  const webview = {
+    cspSource: 'webview:', options: {}, html: '',
+    asWebviewUri: vi.fn(() => ({ toString: () => 'resource' })), postMessage,
+    onDidReceiveMessage: vi.fn((handler: (message: unknown) => void) => { receive = handler; })
+  };
+  const panel = {
+    get webview() {
+      if (disposed) throw new Error('Webview is disposed');
+      return webview;
+    },
+    onDidDispose: vi.fn((handler: () => void) => { disposePanel = handler; }),
+    onDidChangeViewState: vi.fn()
+  };
+  const document = { uri: { toString: () => 'file:///ready.md' }, getText: () => '# Ready' };
+  const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+
+  await provider.resolveCustomTextEditor(document as never, panel as never);
+  receive!({ type: 'ready' });
+  await vi.waitFor(() => expect(failPost).toBeDefined());
+  disposed = true;
+  disposePanel!();
+  failPost!(new Error('Webview is disposed'));
+
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  expect(postMessage).toHaveBeenCalledTimes(1);
+  expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+});

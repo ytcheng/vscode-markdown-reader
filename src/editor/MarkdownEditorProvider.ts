@@ -6,7 +6,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { TocStateStore } from './TocStateStore.js';
 import type { HeadingItem, RenderResult } from '../renderer/types.js';
 import { DocumentSession, type RenderSink } from './DocumentSession.js';
-import { NavigationCoordinator } from './NavigationCoordinator.js';
+import { NavigationCoordinator, type NavigationPanel } from './NavigationCoordinator.js';
 import { WebviewResourceRewriter } from '../links/WebviewResourceRewriter.js';
 import { ResourceResolver } from '../links/ResourceResolver.js';
 import { MarkdownRenderer } from '../renderer/MarkdownRenderer.js';
@@ -52,8 +52,20 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
+    const webview = panel.webview;
+    const navigationPanel: NavigationPanel = { postMessage: (message) => this.#postMessage(panel, message) };
+    let session: DocumentSession | undefined;
+    let sink: RenderSink | undefined;
     this.#panelUris.set(panel, key);
     this.#panels.set(panel, document);
+    panel.onDidDispose(() => {
+      if (this.#activePanel === panel) this.#activePanel = undefined;
+      this.#navigation.remove(key, navigationPanel);
+      this.#panels.delete(panel);
+      this.#readyPanels.delete(panel);
+      if (session && sink) session.detach(sink);
+      this.#disposeSession(key);
+    }, undefined, this.context.subscriptions);
     const toc = this.#tocStates.get(key) ?? {
       tocVisible: vscode.workspace.getConfiguration('markdownReader', document.uri).get<boolean>('toc.enabled', true),
       collapsedSlugs: []
@@ -61,47 +73,42 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     this.#states.set(panel, { ...toc, scrollTop: 0 });
     this.activeDocumentUri = document.uri;
     this.#activePanel = panel;
-    this.#navigation.markActive(document.uri.toString(), panel.webview);
-    panel.webview.options = {
+    this.#navigation.markActive(key, navigationPanel);
+    webview.options = {
       enableScripts: true,
       localResourceRoots: [this.context.extensionUri, vscode.Uri.joinPath(document.uri, '..')]
     };
-    panel.webview.html = getWebviewHtml({
-      cspSource: panel.webview.cspSource,
-      mermaidScriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'mermaid-frame.js')).toString(),
-      mermaidFrameUri: await (this.#mermaidFrameUri ??= vscode.workspace.fs.readFile(
-        vscode.Uri.joinPath(this.context.extensionUri, 'media', 'mermaid-frame.html')
-      ).then((bytes) => `data:text/html;base64,${Buffer.from(bytes).toString('base64')}`)),
+    const mermaidFrameUri = await (this.#mermaidFrameUri ??= vscode.workspace.fs.readFile(
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'mermaid-frame.html')
+    ).then((bytes) => `data:text/html;base64,${Buffer.from(bytes).toString('base64')}`));
+    if (!this.#panels.has(panel)) return;
+    webview.html = getWebviewHtml({
+      cspSource: webview.cspSource,
+      mermaidScriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'mermaid-frame.js')).toString(),
+      mermaidFrameUri,
       nonce: randomBytes(18).toString('base64'),
-      katexStyleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'katex', 'katex.min.css')).toString(),
-      scriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.js')).toString(),
-      styleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.css')).toString(),
-      highContrastStyleUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'high-contrast.css')).toString()
+      katexStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'katex', 'katex.min.css')).toString(),
+      scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.js')).toString(),
+      styleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.css')).toString(),
+      highContrastStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'high-contrast.css')).toString()
     });
 
-    const session = this.#sessionFor(document);
-    const sink: RenderSink = {
+    session = this.#sessionFor(document);
+    sink = {
       postRender: async (result) => {
+        if (!this.#panels.has(panel)) return false;
         this.#headings.set(panel, result.headings);
         this.#snapshots.set(panel, { revision: result.revision, digest: this.#renderDigests.get(result) ?? '' });
         const rewriter = new WebviewResourceRewriter({ resolve: (href) => this.#resolver.resolve(document.uri, href)?.uri });
-        const rewritten = rewriter.rewrite(result, panel.webview);
-        return panel.webview.postMessage({ type: 'render', result: rewritten, restore: this.#states.get(panel) });
+        const rewritten = rewriter.rewrite(result, webview);
+        return this.#postMessage(panel, { type: 'render', result: rewritten, restore: this.#states.get(panel) });
       }
     };
     session.attach(sink);
     this.#watchFile(document);
 
-    panel.onDidDispose(() => {
-      if (this.#activePanel === panel) this.#activePanel = undefined;
-      this.#navigation.remove(document.uri.toString(), panel.webview);
-      this.#panels.delete(panel);
-      this.#readyPanels.delete(panel);
-      session.detach(sink);
-      this.#disposeSession(document.uri.toString());
-    }, undefined, this.context.subscriptions);
-    panel.onDidChangeViewState(() => { if (panel.active) { this.activeDocumentUri = document.uri; this.#activePanel = panel; this.#navigation.markActive(document.uri.toString(), panel.webview); } }, undefined, this.context.subscriptions);
-    panel.webview.onDidReceiveMessage((raw) => void this.#handleMessage(raw, document, panel).catch((error) => this.#reportError(error)), undefined, this.context.subscriptions);
+    panel.onDidChangeViewState(() => { if (panel.active && this.#panels.has(panel)) { this.activeDocumentUri = document.uri; this.#activePanel = panel; this.#navigation.markActive(key, navigationPanel); } }, undefined, this.context.subscriptions);
+    webview.onDidReceiveMessage((raw) => void this.#handleMessage(raw, document, panel, navigationPanel).catch((error) => this.#reportError(error)), undefined, this.context.subscriptions);
   }
 
   async openPreview(uri = this.activeDocumentUri): Promise<void> {
@@ -138,16 +145,19 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   showSettings(): void {
-    void this.#activePanel?.webview.postMessage({ type: 'showSettings' });
+    const panel = this.#activePanel;
+    if (panel) void this.#postMessage(panel, { type: 'showSettings' }).catch((error) => this.#reportError(error));
   }
 
   requestExport(action: 'print' | 'exportHtml'): void {
-    void this.#activePanel?.webview.postMessage({ type: 'requestExport', action });
+    const panel = this.#activePanel;
+    if (panel) void this.#postMessage(panel, { type: 'requestExport', action }).catch((error) => this.#reportError(error));
   }
 
   #toggleToc(panel: vscode.WebviewPanel): void {
+    if (!this.#panels.has(panel)) return;
     const current = this.#states.get(panel)?.tocVisible ?? true;
-    void panel.webview.postMessage({ type: 'setTocVisible', visible: !current });
+    void this.#postMessage(panel, { type: 'setTocVisible', visible: !current }).catch((error) => this.#reportError(error));
     const state = { ...(this.#states.get(panel) ?? { scrollTop: 0, collapsedSlugs: [] }), tocVisible: !current };
     this.#states.set(panel, state);
     this.#rememberToc(panel, state);
@@ -204,14 +214,17 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     this.#watchers.delete(key);
   }
 
-  async #handleMessage(raw: unknown, document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
+  async #handleMessage(raw: unknown, document: vscode.TextDocument, panel: vscode.WebviewPanel, navigationPanel: NavigationPanel): Promise<void> {
+    if (!this.#panels.has(panel)) return;
     const message = parseWebviewMessage(raw);
     if (!message) return;
     if (message.type === 'ready') {
       this.#readyPanels.add(panel);
-      this.#navigation.ready(document.uri.toString(), panel.webview);
+      this.#navigation.ready(document.uri.toString(), navigationPanel);
       await this.#postLayout(panel);
+      if (!this.#panels.has(panel)) return;
       await this.#postSettings(panel, document);
+      if (!this.#panels.has(panel)) return;
       await this.#sessionFor(document).renderNow();
       return;
     }
@@ -221,12 +234,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
           if (message.type === 'resetSettings') await resetSettings(document.uri);
           else await writeSetting(document.uri, message.key, message.value);
         } catch (error) {
-          await panel.webview.postMessage({ type: 'settingsAcknowledged', requestId: message.requestId, settings: readSettings(document.uri) });
+          await this.#postMessage(panel, { type: 'settingsAcknowledged', requestId: message.requestId, settings: readSettings(document.uri) });
           throw error;
         } finally {
           await this.#refreshSettings(message.type === 'resetSettings' || message.key === 'largeFileMode' || message.key === 'largeFileThresholdKb');
         }
-        await panel.webview.postMessage({ type: 'settingsAcknowledged', requestId: message.requestId, settings: readSettings(document.uri) });
+        await this.#postMessage(panel, { type: 'settingsAcknowledged', requestId: message.requestId, settings: readSettings(document.uri) });
       });
       this.#settingsWrites = operation.catch(() => undefined);
       await operation;
@@ -285,8 +298,18 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     void vscode.window.showErrorMessage(`Markdown Reader: ${error instanceof Error ? error.message : String(error)}`);
   }
 
+  async #postMessage(panel: vscode.WebviewPanel, message: unknown): Promise<boolean> {
+    if (!this.#panels.has(panel)) return false;
+    try {
+      return await panel.webview.postMessage(message);
+    } catch (error) {
+      if (!this.#panels.has(panel)) return false;
+      throw error;
+    }
+  }
+
   async #postSettings(panel: vscode.WebviewPanel, document: vscode.TextDocument): Promise<void> {
-    await panel.webview.postMessage({ type: 'setReaderSettings', settings: readSettings(document.uri) });
+    await this.#postMessage(panel, { type: 'setReaderSettings', settings: readSettings(document.uri) });
   }
 
   async #refreshSettings(render: boolean): Promise<void> {
@@ -300,7 +323,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
   async #postLayout(panel: vscode.WebviewPanel): Promise<void> {
     const configuration = vscode.workspace.getConfiguration('markdownReader', this.#panels.get(panel)?.uri);
-    await panel.webview.postMessage({
+    await this.#postMessage(panel, {
       type: 'setLayout',
       tocMaxDepth: configuration.get<number>('toc.maxDepth', 3),
       tocWidth: configuration.get<number>('toc.width', 260),
