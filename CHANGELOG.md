@@ -2,6 +2,12 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.3 — 2026-09-23
+
+- Fix the white strip beside the table of contents and make its light background easier to distinguish.
+- Match dark-mode Webview scrollbars to the VS Code editor theme.
+- Prevent "Webview is disposed" errors when a preview closes during loading or an asynchronous update.
+
 ## 0.3.2 — 2026-09-22
 
 - Extend the light Reader directory background across scrollbar tracks, corners and thumb borders, including the narrow-screen drawer.
