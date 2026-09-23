@@ -1058,7 +1058,7 @@ body.vscode-light .markdown-body code {
 .markdown-body .mermaid-diagram {
   max-width: 100%;
   height: auto;
-  background: white;
+  background: var(--reader-background, white);
 }
 .markdown-body .mermaid-error {
   color: var(--danger-color);

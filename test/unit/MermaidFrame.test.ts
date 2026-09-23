@@ -57,3 +57,18 @@ it('does not send a fetched script after disposal', async () => {
   await rejected;
   expect(post).not.toHaveBeenCalled();
 });
+
+it('passes the selected Mermaid theme to the sandbox', async () => {
+  const { rendering, post, send } = setup();
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, text: async () => 'bundled script' })));
+  send({ type: 'mermaidBootstrapReady' });
+  await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'initMermaid' }), '*'));
+  send({ type: 'mermaidReady' });
+  await vi.waitFor(() => expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'renderMermaid', theme: 'default' }), '*'));
+  send({ type: 'mermaidResult', id: 'reader-mermaid-1', svg: '<svg/>' });
+  await rendering;
+  const dark = renderer!.render('reader-mermaid-2', 'graph TD; B-->C', 'dark');
+  await vi.waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'renderMermaid', id: 'reader-mermaid-2', source: 'graph TD; B-->C', theme: 'dark' }, '*'));
+  send({ type: 'mermaidResult', id: 'reader-mermaid-2', svg: '<svg/>' });
+  await dark;
+});

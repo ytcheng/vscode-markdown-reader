@@ -7,7 +7,7 @@ export class ReaderControls {
   #revision = -1;
   #requestId = 0;
   readonly #pending = new Map<keyof ReaderSettings, { value: string | number; requestId: number }>();
-  constructor(private readonly document: Document, private readonly post: (message: WebviewToExtensionMessage) => void) {}
+  constructor(private readonly document: Document, private readonly post: (message: WebviewToExtensionMessage) => void, private readonly onColorChange?: (color: string) => void) {}
   start(): void {
     if (!this.document.getElementById('reader-menu-toggle')) return;
     this.document.addEventListener('click', this.#click);
@@ -71,14 +71,19 @@ export class ReaderControls {
   requestExport(type: 'print' | 'exportHtml'): void {
     if (this.#revision < 0) return;
     const diagrams = [...this.document.querySelectorAll<HTMLElement>('#document [data-mermaid]')]
-      .map((figure) => figure.querySelector<HTMLImageElement>('img.mermaid-diagram')?.getAttribute('src') ?? '');
+      .map((figure) => {
+        const image = figure.querySelector<HTMLImageElement>('img.mermaid-diagram');
+        return image && (!image.dataset.readerColor || image.dataset.readerColor === this.document.body.dataset.readerColor) ? image.getAttribute('src') ?? '' : '';
+      });
     this.post({ type, diagrams, revision: this.#revision });
   }
   #color(): void {
     const body = this.document.body;
+    const previous = body.dataset.readerColor;
     const high = body.classList.contains('vscode-high-contrast') || body.classList.contains('vscode-high-contrast-light');
     body.dataset.readerColor = high ? 'high-contrast' : this.#settings.colorMode === 'auto'
       ? body.classList.contains('vscode-dark') ? 'dark' : 'light' : this.#settings.colorMode;
+    if (previous !== body.dataset.readerColor) this.onColorChange?.(body.dataset.readerColor);
   }
   #menu(open: boolean, restore = false): void {
     this.get('reader-menu').hidden = !open;

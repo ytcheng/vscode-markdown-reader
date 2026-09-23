@@ -42,12 +42,14 @@
 
   // src/webview/ReaderControls.ts
   var ReaderControls = class {
-    constructor(document2, post) {
+    constructor(document2, post, onColorChange) {
       this.document = document2;
       this.post = post;
+      this.onColorChange = onColorChange;
     }
     document;
     post;
+    onColorChange;
     #settings = { ...defaultSettings };
     #observer;
     #revision = -1;
@@ -115,13 +117,18 @@
     }
     requestExport(type) {
       if (this.#revision < 0) return;
-      const diagrams = [...this.document.querySelectorAll("#document [data-mermaid]")].map((figure) => figure.querySelector("img.mermaid-diagram")?.getAttribute("src") ?? "");
+      const diagrams = [...this.document.querySelectorAll("#document [data-mermaid]")].map((figure) => {
+        const image = figure.querySelector("img.mermaid-diagram");
+        return image && (!image.dataset.readerColor || image.dataset.readerColor === this.document.body.dataset.readerColor) ? image.getAttribute("src") ?? "" : "";
+      });
       this.post({ type, diagrams, revision: this.#revision });
     }
     #color() {
       const body = this.document.body;
+      const previous = body.dataset.readerColor;
       const high = body.classList.contains("vscode-high-contrast") || body.classList.contains("vscode-high-contrast-light");
       body.dataset.readerColor = high ? "high-contrast" : this.#settings.colorMode === "auto" ? body.classList.contains("vscode-dark") ? "dark" : "light" : this.#settings.colorMode;
+      if (previous !== body.dataset.readerColor) this.onColorChange?.(body.dataset.readerColor);
     }
     #menu(open, restore = false) {
       this.get("reader-menu").hidden = !open;
@@ -257,7 +264,7 @@
     #loading = false;
     #failure;
     #pending = /* @__PURE__ */ new Map();
-    async render(id, source) {
+    async render(id, source, theme = "default") {
       if (this.#failure) throw this.#failure;
       if (!this.#ready) {
         const uri = this.document.body.dataset.mermaidFrameUri;
@@ -282,7 +289,7 @@
         }, 3e4);
         this.#pending.set(id, { resolve, reject, timer });
         void this.#ready.then(() => {
-          if (this.#pending.has(id)) this.#frame?.contentWindow?.postMessage({ type: "renderMermaid", id, source }, "*");
+          if (this.#pending.has(id)) this.#frame?.contentWindow?.postMessage({ type: "renderMermaid", id, source, theme }, "*");
         });
       });
     }
@@ -341,6 +348,8 @@
     }
     renderDiagram;
     #frame;
+    #versions = /* @__PURE__ */ new WeakMap();
+    #rendering = /* @__PURE__ */ new WeakMap();
     dispose() {
       this.#frame?.dispose();
     }
@@ -349,34 +358,46 @@
         const code = figure.querySelector("code");
         if (!code || !figure.isConnected) continue;
         const document2 = article.ownerDocument;
+        const color = document2.body.dataset.readerColor ?? "light";
+        const theme = color === "dark" || color === "high-contrast" ? "dark" : "default";
+        const existing = figure.querySelector("img.mermaid-diagram");
+        if (existing?.dataset.readerColor === color || this.#rendering.get(figure) === color) continue;
+        const version = (this.#versions.get(figure) ?? 0) + 1;
+        this.#versions.set(figure, version);
+        this.#rendering.set(figure, color);
         const staging = document2.createElement("div");
         staging.className = "mermaid-staging";
         staging.setAttribute("aria-hidden", "true");
         document2.body.append(staging);
         try {
-          const render = this.renderDiagram ?? ((id, source) => (this.#frame ??= new MermaidFrame(document2)).render(id, source));
+          const render = this.renderDiagram ?? ((id, source, _container, selectedTheme) => (this.#frame ??= new MermaidFrame(document2)).render(id, source, selectedTheme));
           if (!figure.isConnected) continue;
-          const { svg } = await render(`reader-mermaid-${++sequence}`, code.textContent ?? "", staging);
-          if (!figure.isConnected) continue;
+          const { svg } = await render(`reader-mermaid-${++sequence}`, code.textContent ?? "", staging, theme);
+          if (!figure.isConnected || this.#versions.get(figure) !== version || (document2.body.dataset.readerColor ?? "light") !== color) continue;
           const image = document2.createElement("img");
           image.className = "mermaid-diagram";
           image.alt = "Mermaid diagram";
+          image.dataset.readerColor = color;
           const viewBox = svg.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)?.[1].trim().split(/[\s,]+/).map(Number);
           if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {
             image.width = Math.ceil(viewBox[2]);
             image.height = Math.ceil(viewBox[3]);
           }
           image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+          figure.querySelectorAll("img.mermaid-diagram, .mermaid-error").forEach((node) => node.remove());
           figure.append(image);
           figure.querySelector("pre").hidden = true;
         } catch {
-          if (!figure.isConnected) continue;
+          if (!figure.isConnected || this.#versions.get(figure) !== version || (document2.body.dataset.readerColor ?? "light") !== color) continue;
+          figure.querySelectorAll("img.mermaid-diagram, .mermaid-error").forEach((node) => node.remove());
+          figure.querySelector("pre").hidden = false;
           const error = document2.createElement("p");
           error.className = "mermaid-error";
           error.setAttribute("role", "status");
           error.textContent = "Unable to render Mermaid diagram. Check the source syntax.";
           figure.append(error);
         } finally {
+          if (this.#versions.get(figure) === version) this.#rendering.delete(figure);
           staging.remove();
         }
       }
@@ -388,7 +409,9 @@
     constructor(document2, api) {
       this.document = document2;
       this.api = api;
-      this.#controls = new ReaderControls(document2, (message) => api.postMessage(message));
+      this.#controls = new ReaderControls(document2, (message) => api.postMessage(message), () => {
+        void this.#mermaid.render(this.article);
+      });
     }
     document;
     api;

@@ -1,5 +1,6 @@
 // Mermaid runs in an opaque sandbox with a restrictive child CSP.
 // It has no VS Code API, network access, or permission to navigate its parent.
+export type MermaidTheme = 'default' | 'dark';
 export class MermaidFrame {
   #frame: HTMLIFrameElement | undefined;
   #ready: Promise<void> | undefined;
@@ -10,7 +11,7 @@ export class MermaidFrame {
 
   constructor(private readonly document: Document) {}
 
-  async render(id: string, source: string): Promise<{ svg: string }> {
+  async render(id: string, source: string, theme: MermaidTheme = 'default'): Promise<{ svg: string }> {
     if (this.#failure) throw this.#failure;
     if (!this.#ready) {
       const uri = this.document.body.dataset.mermaidFrameUri;
@@ -33,7 +34,7 @@ export class MermaidFrame {
       }, 30_000);
       this.#pending.set(id, { resolve, reject, timer });
       void this.#ready!.then(() => {
-        if (this.#pending.has(id)) this.#frame?.contentWindow?.postMessage({ type: 'renderMermaid', id, source }, '*');
+        if (this.#pending.has(id)) this.#frame?.contentWindow?.postMessage({ type: 'renderMermaid', id, source, theme }, '*');
       });
     });
   }

@@ -54,6 +54,19 @@ it('sends export snapshots as image data only', () => {
   document.querySelector<HTMLButtonElement>('[data-action="exportHtml"]')!.click();
   expect(post).toHaveBeenCalledWith({ type: 'exportHtml', revision: 1, diagrams: ['data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E'] });
 });
+it('announces appearance changes and excludes an outdated diagram from export', () => {
+  const changed = vi.fn();
+  controls.dispose();
+  controls = new ReaderControls(document, post, changed);
+  controls.start();
+  controls.setRevision(1);
+  document.querySelector('#document')!.innerHTML = '<figure data-mermaid><img class="mermaid-diagram" data-reader-color="light" src="data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E"></figure>';
+  changed.mockClear();
+  controls.apply({ ...defaultSettings, colorMode: 'dark' });
+  expect(changed).toHaveBeenCalledWith('dark');
+  document.querySelector<HTMLButtonElement>('[data-action="exportHtml"]')!.click();
+  expect(post).toHaveBeenCalledWith({ type: 'exportHtml', revision: 1, diagrams: [''] });
+});
 it('keeps rapid typography changes ahead of delayed host broadcasts', () => {
   get('reader-font-larger').click();
   get('reader-font-larger').click();

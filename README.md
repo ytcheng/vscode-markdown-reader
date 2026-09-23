@@ -108,7 +108,7 @@ Markdown Reader supports the everyday Markdown features needed for documentation
 - Local and HTTPS images
 - In-document anchors, Markdown file links, and external web links
 
-Use fenced blocks labelled `mermaid` for diagrams, `$...$` for inline math, and `$$...$$` for display math. Invalid diagrams retain their source with an error message; invalid formulas remain readable. All grammars, diagram code, fonts, and styles are bundled for offline use. Diagrams and formulas render locally without uploading document content or requiring an API key.
+Use fenced blocks labelled `mermaid` for diagrams, `$...$` for inline math, and `$$...$$` for display math. Mermaid diagrams follow the reading appearance, including dark mode, and update when it changes. Invalid diagrams retain their source with an error message; invalid formulas remain readable. All grammars, diagram code, fonts, and styles are bundled for offline use. Diagrams and formulas render locally without uploading document content or requiring an API key.
 
 Source navigation targets the beginning of the clicked Markdown block. Links, buttons, and form controls keep their normal behavior. TOC state is remembered for the most recent 100 document URIs in each workspace; existing split previews remain independent. `toc.enabled` sets the default for documents without saved state.
 

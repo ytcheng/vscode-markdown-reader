@@ -43,7 +43,7 @@ export class ReaderApp {
   constructor(
     private readonly document: Document,
     private readonly api: VsCodeApi
-  ) { this.#controls = new ReaderControls(document, (message) => api.postMessage(message)); }
+  ) { this.#controls = new ReaderControls(document, (message) => api.postMessage(message), () => { void this.#mermaid.render(this.article); }); }
 
   start(): void {
     if (this.#started) return;

@@ -30,3 +30,26 @@ it('does not attach stale diagrams after the document is replaced', async () => 
   await pending;
   expect(article.innerHTML).toBe('<p>new</p>');
 });
+
+it('rerenders an existing diagram for the current appearance and discards an outdated result', async () => {
+  document.body.dataset.readerColor = 'light';
+  document.body.innerHTML = '<article><figure data-mermaid><pre><code>graph TD; A --> B</code></pre></figure></article>';
+  const finish: Array<(value: { svg: string }) => void> = [];
+  const render = vi.fn((_id: string, _source: string, _container: HTMLElement, _theme: string) => new Promise<{ svg: string }>((resolve) => finish.push(resolve)));
+  const renderer = new MermaidRenderer(render);
+  const article = document.querySelector('article')!;
+  const first = renderer.render(article);
+  await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1));
+  document.body.dataset.readerColor = 'dark';
+  const second = renderer.render(article);
+  await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(2));
+  expect(render.mock.calls.map((call) => call[3])).toEqual(['default', 'dark']);
+  finish[1]({ svg: '<svg viewBox="0 0 40 20"><text>dark</text></svg>' });
+  await second;
+  finish[0]({ svg: '<svg viewBox="0 0 40 20"><text>light</text></svg>' });
+  await first;
+  const images = article.querySelectorAll<HTMLImageElement>('img.mermaid-diagram');
+  expect(images).toHaveLength(1);
+  expect(decodeURIComponent(images[0].src)).toContain('<text>dark</text>');
+  expect(images[0].dataset.readerColor).toBe('dark');
+});
