@@ -1271,6 +1271,38 @@ body[data-reader-color] ::-webkit-scrollbar-thumb {
   background: var(--text-muted);
   border-color: var(--reader-background);
 }
+html:has(body[data-reader-color='dark']) {
+  color-scheme: dark;
+}
+html:has(body[data-reader-color='dark']),
+body[data-reader-color='dark'],
+body[data-reader-color='dark'] * {
+  scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4)) var(--vscode-scrollbar-background, transparent);
+}
+html:has(body[data-reader-color='dark'])::-webkit-scrollbar-track,
+body[data-reader-color='dark']::-webkit-scrollbar-track,
+body[data-reader-color='dark'] *::-webkit-scrollbar-track,
+html:has(body[data-reader-color='dark'])::-webkit-scrollbar-corner,
+body[data-reader-color='dark']::-webkit-scrollbar-corner,
+body[data-reader-color='dark'] *::-webkit-scrollbar-corner {
+  background: var(--vscode-scrollbar-background, transparent);
+}
+html:has(body[data-reader-color='dark'])::-webkit-scrollbar-thumb,
+body[data-reader-color='dark']::-webkit-scrollbar-thumb,
+body[data-reader-color='dark'] *::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  border-color: var(--vscode-scrollbar-background, transparent);
+}
+html:has(body[data-reader-color='dark'])::-webkit-scrollbar-thumb:hover,
+body[data-reader-color='dark']::-webkit-scrollbar-thumb:hover,
+body[data-reader-color='dark'] *::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(121, 121, 121, 0.7));
+}
+html:has(body[data-reader-color='dark'])::-webkit-scrollbar-thumb:active,
+body[data-reader-color='dark']::-webkit-scrollbar-thumb:active,
+body[data-reader-color='dark'] *::-webkit-scrollbar-thumb:active {
+  background: var(--vscode-scrollbarSlider-activeBackground, rgba(121, 121, 121, 0.8));
+}
 body[data-reader-theme='github'] .markdown-body {
   line-height: 1.5;
 }
