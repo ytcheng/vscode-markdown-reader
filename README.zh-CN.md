@@ -76,6 +76,7 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
   "markdownReader.theme": "reader",
   "markdownReader.colorMode": "light",
   "markdownReader.fontFamily": "",
+  "markdownReader.fontSizeMode": "editor",
   "markdownReader.fontSize": 16,
   "markdownReader.largeFile.mode": "auto",
   "markdownReader.largeFile.thresholdKb": 1024,
@@ -95,7 +96,8 @@ Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈
 | `markdownReader.theme` | `reader` | `reader` / `github` 排版。 |
 | `markdownReader.colorMode` | `light` | `auto` / `light` / `dark` 配色。 |
 | `markdownReader.fontFamily` | `""` | 空字符串使用系统字体；也可填 `"Noto Sans SC", sans-serif` 等本机字体列表。 |
-| `markdownReader.fontSize` | `16` | 正文字号，12–32 px。 |
+| `markdownReader.fontSizeMode` | `editor` | `editor` 跟随 VS Code 的 `editor.fontSize`；`custom` 使用 `markdownReader.fontSize`。 |
+| `markdownReader.fontSize` | `16` | 自定义正文字号，12–32 px。 |
 | `markdownReader.largeFile.mode` | `auto` | `auto` / `on` / `off`。 |
 | `markdownReader.largeFile.thresholdKb` | `1024` | 自动开启阈值，按 UTF-8 字节数计算，单位 KiB。 |
 

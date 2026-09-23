@@ -39,8 +39,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(private readonly context: vscode.ExtensionContext) {
     this.#tocStates = new TocStateStore(context.workspaceState);
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
-      if (!event.affectsConfiguration('markdownReader')) return;
-      void this.#refreshSettings(event.affectsConfiguration('markdownReader.largeFile')).catch((error) => this.#reportError(error));
+      const readerChanged = event.affectsConfiguration('markdownReader');
+      const editorFontSizeChanged = event.affectsConfiguration('editor.fontSize');
+      if (!readerChanged && !editorFontSizeChanged) return;
+      void this.#refreshSettings(readerChanged && event.affectsConfiguration('markdownReader.largeFile')).catch((error) => this.#reportError(error));
     }));
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => {
       const session = this.#sessions.get(event.document.uri.toString());

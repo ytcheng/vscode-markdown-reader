@@ -76,6 +76,7 @@ Configure Markdown Reader in VS Code Settings, or add the following to `settings
   "markdownReader.theme": "reader",
   "markdownReader.colorMode": "light",
   "markdownReader.fontFamily": "",
+  "markdownReader.fontSizeMode": "editor",
   "markdownReader.fontSize": 16,
   "markdownReader.largeFile.mode": "auto",
   "markdownReader.largeFile.thresholdKb": 1024,
@@ -95,7 +96,8 @@ Configure Markdown Reader in VS Code Settings, or add the following to `settings
 | `markdownReader.theme` | `reader` | `reader`, `github` |
 | `markdownReader.colorMode` | `light` | `auto`, `light`, `dark` |
 | `markdownReader.fontFamily` | `""` | Local font family list; empty uses system fonts. |
-| `markdownReader.fontSize` | `16` | Body size in pixels, 12–32. |
+| `markdownReader.fontSizeMode` | `editor` | `editor` follows VS Code's `editor.fontSize`; `custom` uses `markdownReader.fontSize`. |
+| `markdownReader.fontSize` | `16` | Custom body size in pixels, 12–32. |
 | `markdownReader.largeFile.mode` | `auto` | `auto`, `on`, `off` |
 | `markdownReader.largeFile.thresholdKb` | `1024` | UTF-8 size threshold in KiB. |
 

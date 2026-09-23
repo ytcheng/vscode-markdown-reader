@@ -1,4 +1,4 @@
-import { isSettingValue, type ReaderSettings } from '../settings/ReaderSettings.js';
+import { isSettingValue, type ReaderSettingKey } from '../settings/ReaderSettings.js';
 import type { ViewportState, WebviewToExtensionMessage } from '../webview/messages.js';
 
 const MAX_HREF_LENGTH = 8_192;
@@ -11,7 +11,7 @@ export function parseWebviewMessage(value: unknown): WebviewToExtensionMessage |
   switch (value.type) {
     case 'updateSetting':
       return hasOnlyKeys(value, ['type', 'key', 'value', 'requestId']) && validRequestId(value.requestId) && typeof value.key === 'string' && isSettingValue(value.key, value.value)
-        ? { type: 'updateSetting', key: value.key as keyof ReaderSettings, value: value.value as string | number, requestId: value.requestId as number } : undefined;
+        ? { type: 'updateSetting', key: value.key as ReaderSettingKey, value: value.value as string | number, requestId: value.requestId as number } : undefined;
     case 'print':
     case 'exportHtml': {
       if (!hasOnlyKeys(value, ['type', 'diagrams', 'revision']) || typeof value.revision !== 'number' || !Number.isSafeInteger(value.revision) || value.revision < 0 || !Array.isArray(value.diagrams) || value.diagrams.length > 1000) return undefined;

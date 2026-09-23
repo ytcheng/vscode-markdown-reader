@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { ResourceResolver } from '../links/ResourceResolver.js';
 import { MarkdownRenderer } from '../renderer/MarkdownRenderer.js';
 import { classifyLink } from '../security/links.js';
-import { normalizeSettings, useLargeFileMode, type ReaderSettings } from '../settings/ReaderSettings.js';
+import { effectiveFontSize, normalizeSettings, useLargeFileMode, type ReaderSettings } from '../settings/ReaderSettings.js';
 
 const MAX_DIAGRAM_BYTES = 10 * 1024 * 1024;
 const SVG_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -77,7 +77,7 @@ export class ExportService {
     const nonce = randomBytes(18).toString('base64');
     const print = action === 'print';
     const css = `${await this.#readStyles()}\n${result.styles ?? ''}`.replace(/</g, '\\3c ');
-    const inlineSettings = `--reader-font-size:${preferences.fontSize}px;--reader-content-max-width:${preferences.contentMaxWidth}px;--reader-font-family:${preferences.fontFamily || 'system-ui, sans-serif'}`;
+    const inlineSettings = `--reader-font-size:${effectiveFontSize(preferences)}px;--reader-content-max-width:${preferences.contentMaxWidth}px;--reader-font-family:${preferences.fontFamily || 'system-ui, sans-serif'}`;
     const warningHtml = warnings.size ? `<aside class="reader-export-warnings" role="status">${[...warnings].map(escapeHtml).join(' ')}</aside>` : '';
     const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

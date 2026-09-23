@@ -6,6 +6,7 @@
     colorMode: "light",
     fontFamily: "",
     fontSize: 16,
+    fontSizeMode: "editor",
     contentMaxWidth: 900,
     largeFileMode: "auto",
     largeFileThresholdKb: 1024
@@ -23,6 +24,8 @@
         return typeof value === "string" && value.length <= 200 && !/[;{}<>\\\n\r\x00-\x1f]/u.test(value) && !/url\s*\(/i.test(value);
       case "fontSize":
         return integerBetween(value, 12, 32);
+      case "fontSizeMode":
+        return value === "editor" || value === "custom";
       case "contentMaxWidth":
         return integerBetween(value, 560, 1600);
       case "largeFileThresholdKb":
@@ -37,7 +40,14 @@
   function normalizeSettings(value) {
     const result = { ...defaultSettings };
     for (const key of settingKeys) if (isSettingValue(key, value[key])) Object.assign(result, { [key]: value[key] });
+    if (isEditorFontSize(value.editorFontSize)) result.editorFontSize = value.editorFontSize;
     return result;
+  }
+  function isEditorFontSize(value) {
+    return typeof value === "number" && Number.isFinite(value) && value >= 6 && value <= 100;
+  }
+  function effectiveFontSize(settings) {
+    return settings.fontSizeMode === "editor" ? settings.editorFontSize ?? 14 : settings.fontSize;
   }
 
   // src/webview/ReaderControls.ts
@@ -80,7 +90,7 @@
       this.#settings = normalizeSettings(merged);
       const body = this.document.body;
       body.dataset.readerTheme = this.#settings.theme;
-      body.style.setProperty("--reader-font-size", `${this.#settings.fontSize}px`);
+      body.style.setProperty("--reader-font-size", `${effectiveFontSize(this.#settings)}px`);
       body.style.setProperty("--reader-font-family", this.#settings.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
       body.style.setProperty("--reader-content-max-width", `${this.#settings.contentMaxWidth}px`);
       this.#color();
@@ -92,6 +102,11 @@
       const family = this.#settings.fontFamily;
       if (this.document.activeElement?.id !== "reader-font-family" && this.document.activeElement?.id !== "reader-font-preset") this.get("reader-font-preset").value = ["", "serif", "monospace"].includes(family) ? family : "custom";
       this.#customFont();
+      const followsEditor = this.#settings.fontSizeMode === "editor";
+      this.get("reader-font-size-label").hidden = followsEditor;
+      this.get("reader-font-size-control").hidden = followsEditor;
+      this.get("reader-font-size-follow-note").hidden = !followsEditor;
+      this.get("reader-editor-font-size-value").textContent = `${effectiveFontSize(this.#settings)}px`;
       this.get("reader-width-value").textContent = `${this.#settings.contentMaxWidth}px`;
       this.get("reader-font-smaller").disabled = this.#settings.fontSize <= 12;
       this.get("reader-font-larger").disabled = this.#settings.fontSize >= 32;

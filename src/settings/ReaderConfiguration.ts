@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
-import { configurationKeys, defaultSettings, isSettingValue, normalizeSettings, settingKeys, type ReaderSettings } from './ReaderSettings.js';
+import { configurationKeys, defaultSettings, isEditorFontSize, isSettingValue, normalizeSettings, settingKeys, type ReaderSettingKey, type ReaderSettings } from './ReaderSettings.js';
 
 export function readSettings(uri: vscode.Uri): ReaderSettings {
   const config = vscode.workspace.getConfiguration('markdownReader', uri);
   const values: Partial<Record<keyof ReaderSettings, unknown>> = {};
   for (const key of settingKeys) values[key] = config.get(configurationKeys[key], defaultSettings[key]);
-  return normalizeSettings(values);
+  const settings = normalizeSettings(values);
+  const editorFontSize = vscode.workspace.getConfiguration('editor', uri).get('fontSize', 14);
+  if (isEditorFontSize(editorFontSize)) settings.editorFontSize = editorFontSize;
+  return settings;
 }
-export async function writeSetting(uri: vscode.Uri, key: keyof ReaderSettings, value: string | number): Promise<void> {
+export async function writeSetting(uri: vscode.Uri, key: ReaderSettingKey, value: string | number): Promise<void> {
   if (!isSettingValue(key, value)) throw new Error('Invalid reading setting');
   const config = vscode.workspace.getConfiguration('markdownReader', uri);
   const name = configurationKeys[key];

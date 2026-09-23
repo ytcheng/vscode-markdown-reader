@@ -1,4 +1,4 @@
-import type { ReaderSettings } from '../settings/ReaderSettings.js';
+import type { ReaderSettingKey, ReaderSettings } from '../settings/ReaderSettings.js';
 import type { RenderResult } from '../renderer/types.js';
 
 export interface ViewportState {
@@ -21,7 +21,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'setColorMode'; mode: 'light' | 'dark' | 'high-contrast' };
 
 export type WebviewToExtensionMessage =
-  | { type: 'updateSetting'; key: keyof ReaderSettings; value: string | number; requestId: number }
+  | { type: 'updateSetting'; key: ReaderSettingKey; value: string | number; requestId: number }
   | { type: 'resetSettings'; requestId: number }
   | { type: 'openSettings' }
   | { type: 'exportHtml' | 'print'; diagrams: string[]; revision: number }

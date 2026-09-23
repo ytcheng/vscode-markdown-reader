@@ -167,7 +167,7 @@ body:has(.toc[hidden]) .reader {
   display: inline-block;
   padding: 3px 4px;
   color: var(--vscode-sideBar-foreground, inherit);
-  font-size: 14px;
+  font-size: var(--reader-font-size, 14px);
   line-height: 1.6;
   text-decoration: none;
 }
@@ -1537,6 +1537,12 @@ dialog#reader-settings .font-size-control input {
 }
 dialog#reader-settings .font-size-control button {
   width: 30px;
+}
+dialog#reader-settings .font-size-follow-note {
+  grid-column: 1 / -1;
+  margin-top: -8px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 dialog#reader-settings .width-control {
   display: flex;

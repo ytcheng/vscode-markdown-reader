@@ -15,8 +15,16 @@ beforeEach(() => {
   controls = new ReaderControls(document, post);
   controls.start();
   controls.setRevision(1);
+  controls.apply({ ...defaultSettings, fontSizeMode: 'custom' });
 });
 afterEach(() => controls.dispose());
+it('follows the VS Code editor font size by default', () => {
+  controls.apply({ ...defaultSettings, editorFontSize: 19 });
+  expect(get<HTMLSelectElement>('reader-font-size-mode').value).toBe('editor');
+  expect(get('reader-font-size-control').hidden).toBe(true);
+  expect(get('reader-font-size-follow-note').hidden).toBe(false);
+  expect(document.body.style.getPropertyValue('--reader-font-size')).toBe('19px');
+});
 it('opens the menu with keyboard navigation and returns focus on Escape', () => {
   get('reader-menu-toggle').click();
   expect(get('reader-menu').hidden).toBe(false);
@@ -70,7 +78,7 @@ it('announces appearance changes and excludes an outdated diagram from export', 
 it('keeps rapid typography changes ahead of delayed host broadcasts', () => {
   get('reader-font-larger').click();
   get('reader-font-larger').click();
-  controls.apply({ ...defaultSettings, fontSize: 17 });
+  controls.apply({ ...defaultSettings, fontSizeMode: 'custom', fontSize: 17 });
   get('reader-font-larger').click();
   expect(post).toHaveBeenLastCalledWith({ type: 'updateSetting', key: 'fontSize', value: 19, requestId: 3 });
 });
@@ -92,12 +100,12 @@ it('acknowledges exact requests when values repeat during rapid changes', () => 
   get('reader-font-larger').click();
   get('reader-font-smaller').click();
   const firstId = post.mock.calls[0][0].requestId;
-  controls.acknowledge(firstId, { ...defaultSettings, fontSize: 17 });
-  controls.apply({ ...defaultSettings, fontSize: 18 });
+  controls.acknowledge(firstId, { ...defaultSettings, fontSizeMode: 'custom', fontSize: 17 });
+  controls.apply({ ...defaultSettings, fontSizeMode: 'custom', fontSize: 18 });
   get('reader-font-larger').click();
   expect(post.mock.calls.map(([message]) => message.value)).toEqual([17, 18, 17, 18]);
   const finalId = post.mock.calls.at(-1)![0].requestId;
-  controls.acknowledge(finalId, { ...defaultSettings, fontSize: 18 });
-  controls.apply({ ...defaultSettings, fontSize: 24 });
+  controls.acknowledge(finalId, { ...defaultSettings, fontSizeMode: 'custom', fontSize: 18 });
+  controls.apply({ ...defaultSettings, fontSizeMode: 'custom', fontSize: 24 });
   expect(document.body.style.getPropertyValue('--reader-font-size')).toBe('24px');
 });

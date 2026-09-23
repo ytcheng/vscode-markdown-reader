@@ -231,6 +231,13 @@
           "description": "Body font size in pixels. Headings scale proportionally.",
           "scope": "resource"
         },
+        "markdownReader.fontSizeMode": {
+          "type": "string",
+          "enum": ["editor", "custom"],
+          "default": "editor",
+          "description": "Follow the VS Code editor font size, or use markdownReader.fontSize.",
+          "scope": "resource"
+        },
         "markdownReader.largeFile.mode": {
           "type": "string",
           "enum": [

@@ -1,4 +1,4 @@
-import { defaultSettings, isSettingValue, normalizeSettings, type ReaderSettings } from '../settings/ReaderSettings.js';
+import { defaultSettings, effectiveFontSize, isSettingValue, normalizeSettings, type ReaderSettingKey, type ReaderSettings } from '../settings/ReaderSettings.js';
 import type { WebviewToExtensionMessage } from './messages.js';
 
 export class ReaderControls {
@@ -6,7 +6,7 @@ export class ReaderControls {
   #observer?: MutationObserver;
   #revision = -1;
   #requestId = 0;
-  readonly #pending = new Map<keyof ReaderSettings, { value: string | number; requestId: number }>();
+  readonly #pending = new Map<ReaderSettingKey, { value: string | number; requestId: number }>();
   constructor(private readonly document: Document, private readonly post: (message: WebviewToExtensionMessage) => void, private readonly onColorChange?: (color: string) => void) {}
   start(): void {
     if (!this.document.getElementById('reader-menu-toggle')) return;
@@ -33,18 +33,23 @@ export class ReaderControls {
     this.#settings = normalizeSettings(merged);
     const body = this.document.body;
     body.dataset.readerTheme = this.#settings.theme;
-    body.style.setProperty('--reader-font-size', `${this.#settings.fontSize}px`);
+    body.style.setProperty('--reader-font-size', `${effectiveFontSize(this.#settings)}px`);
     body.style.setProperty('--reader-font-family', this.#settings.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
     body.style.setProperty('--reader-content-max-width', `${this.#settings.contentMaxWidth}px`);
     this.#color();
     if (!this.document.getElementById('reader-settings')) return;
     for (const field of this.document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-setting]')) {
       if (field === this.document.activeElement) continue;
-      field.value = String(this.#settings[field.dataset.setting as keyof ReaderSettings]);
+      field.value = String(this.#settings[field.dataset.setting as ReaderSettingKey]);
     }
     const family = this.#settings.fontFamily;
     if (this.document.activeElement?.id !== 'reader-font-family' && this.document.activeElement?.id !== 'reader-font-preset') this.get<HTMLSelectElement>('reader-font-preset').value = ['', 'serif', 'monospace'].includes(family) ? family : 'custom';
     this.#customFont();
+    const followsEditor = this.#settings.fontSizeMode === 'editor';
+    this.get('reader-font-size-label').hidden = followsEditor;
+    this.get('reader-font-size-control').hidden = followsEditor;
+    this.get('reader-font-size-follow-note').hidden = !followsEditor;
+    this.get('reader-editor-font-size-value').textContent = `${effectiveFontSize(this.#settings)}px`;
     this.get('reader-width-value').textContent = `${this.#settings.contentMaxWidth}px`;
     this.get<HTMLButtonElement>('reader-font-smaller').disabled = this.#settings.fontSize <= 12;
     this.get<HTMLButtonElement>('reader-font-larger').disabled = this.#settings.fontSize >= 32;
@@ -98,7 +103,7 @@ export class ReaderControls {
     this.get('reader-font-family').hidden = !custom;
     this.get('reader-font-family-label').hidden = !custom;
   }
-  #update(key: keyof ReaderSettings, value: string | number): void {
+  #update(key: ReaderSettingKey, value: string | number): void {
     if (!isSettingValue(key, value)) { this.apply(this.#settings); return; }
     const requestId = ++this.#requestId;
     this.#pending.set(key, { value, requestId });
@@ -116,7 +121,7 @@ export class ReaderControls {
       case 'reader-settings-reset': {
         const requestId = ++this.#requestId;
         this.#pending.clear(); this.apply({ ...defaultSettings });
-        for (const [key, value] of Object.entries(defaultSettings)) this.#pending.set(key as keyof ReaderSettings, { value, requestId });
+        for (const [key, value] of Object.entries(defaultSettings)) this.#pending.set(key as ReaderSettingKey, { value, requestId });
         this.post({ type: 'resetSettings', requestId }); return;
       }
       case 'reader-settings-more': this.post({ type: 'openSettings' }); return;
@@ -145,7 +150,7 @@ export class ReaderControls {
       else this.#update('fontFamily', field.value);
       return;
     }
-    const key = field.dataset?.setting as keyof ReaderSettings | undefined;
+    const key = field.dataset?.setting as ReaderSettingKey | undefined;
     if (key) this.#update(key, field.type === 'number' || field.type === 'range' ? Number(field.value) : field.value.trim());
   };
   #input = (event: Event): void => {
