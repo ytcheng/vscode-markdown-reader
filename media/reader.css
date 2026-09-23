@@ -1172,7 +1172,7 @@ Original One Dark Syntax theme from https://github.com/atom/one-dark-syntax
   --hljs-hue-6: hsl(25, 100%, 72%);
   --hljs-hue-6-2: hsl(25, 73%, 65%);
   --reader-background: #161b22;
-  --reader-foreground: #e6edf3;
+  --reader-foreground: var(--vscode-editor-foreground, #c5c5c5);
   --reader-code-background: #202938;
   color-scheme: dark;
 }
