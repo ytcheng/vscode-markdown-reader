@@ -2,7 +2,7 @@
   "name": "vscode-markdown-reader",
   "displayName": "Markdown Reader: Focus Mode",
   "description": "Open Markdown as a polished reading view in the current VS Code tab.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "chengjian",
   "private": true,
   "repository": {

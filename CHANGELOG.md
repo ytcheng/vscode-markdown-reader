@@ -2,6 +2,12 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.4 — 2026-09-24
+
+- Follow the VS Code editor font size by default, with an option to use a custom reading font size.
+- Keep Mermaid diagrams synchronized with the reader's light, dark, and automatic appearance.
+- Refine automatic theme colors and dark-mode text, and adjust reading font size for closer visual alignment with the editor.
+
 ## 0.3.3 — 2026-09-23
 
 - Fix the white strip beside the table of contents and make its light background easier to distinguish.
