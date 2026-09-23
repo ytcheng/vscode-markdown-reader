@@ -101,6 +101,7 @@ body {
   --reader-toc-width: 260px;
   --reader-content-max-width: 900px;
   margin: 0;
+  padding: 0;
   color: var(--vscode-editor-foreground, #24292f);
   background: var(--vscode-editor-background, #ffffff);
   font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
@@ -1342,7 +1343,7 @@ body[data-reader-color='high-contrast'] .markdown-body {
 }
 body[data-reader-theme='reader'][data-reader-color='light'] .toc,
 body[data-reader-theme='reader'][data-reader-color='light'] .toc-drawer:not([hidden]) {
-  --reader-background: #f9fafb;
+  --reader-background: #f3f4f6;
   background: var(--reader-background);
   scrollbar-color: var(--text-muted) var(--reader-background);
 }
