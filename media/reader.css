@@ -1192,6 +1192,12 @@ body[data-reader-theme='github'][data-reader-color='dark'] {
   --bg-stripe: #161b22;
   --border-color: #30363d;
 }
+body[data-reader-color='light'][data-reader-color-mode='auto'] {
+  --reader-background: var(--vscode-editor-background, #fff);
+}
+body[data-reader-color='dark'][data-reader-color-mode='auto'] {
+  --reader-background: var(--vscode-editor-background, #161b22);
+}
 body[data-reader-color] {
   color: var(--reader-foreground, var(--vscode-editor-foreground, #24292f));
   background: var(--reader-background, var(--vscode-editor-background, #fff));

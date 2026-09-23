@@ -80,6 +80,7 @@ export class ReaderControls {
   #color(): void {
     const body = this.document.body;
     const previous = body.dataset.readerColor;
+    body.dataset.readerColorMode = this.#settings.colorMode;
     const high = body.classList.contains('vscode-high-contrast') || body.classList.contains('vscode-high-contrast-light');
     body.dataset.readerColor = high ? 'high-contrast' : this.#settings.colorMode === 'auto'
       ? body.classList.contains('vscode-dark') ? 'dark' : 'light' : this.#settings.colorMode;

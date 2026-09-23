@@ -126,6 +126,7 @@
     #color() {
       const body = this.document.body;
       const previous = body.dataset.readerColor;
+      body.dataset.readerColorMode = this.#settings.colorMode;
       const high = body.classList.contains("vscode-high-contrast") || body.classList.contains("vscode-high-contrast-light");
       body.dataset.readerColor = high ? "high-contrast" : this.#settings.colorMode === "auto" ? body.classList.contains("vscode-dark") ? "dark" : "light" : this.#settings.colorMode;
       if (previous !== body.dataset.readerColor) this.onColorChange?.(body.dataset.readerColor);
