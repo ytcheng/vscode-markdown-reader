@@ -2,7 +2,7 @@
   "name": "vscode-markdown-reader",
   "displayName": "Markdown Reader: Focus Mode",
   "description": "Read Markdown in the current VS Code tab with a synchronized table of contents, code highlighting, Mermaid diagrams and math.",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "publisher": "chengjian",
   "private": true,
   "repository": {
@@ -35,7 +35,7 @@
   ],
   "pricing": "Free",
   "engines": {
-    "vscode": "^1.100.0",
+    "vscode": "^1.120.0",
     "node": ">=22.22.2"
   },
   "activationEvents": [
@@ -82,6 +82,11 @@
     "vitest": "5.0.1"
   },
   "contributes": {
+    "configurationDefaults": {
+      "workbench.diffEditorAssociations": {
+        "*.md": "default"
+      }
+    },
     "customEditors": [
       {
         "viewType": "markdownReader.preview",

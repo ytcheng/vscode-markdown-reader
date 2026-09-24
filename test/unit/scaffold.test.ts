@@ -7,6 +7,6 @@ describe('extension scaffold', () => {
   });
 
   it('targets the supported VS Code version', () => {
-    expect(manifest.engines.vscode).toBe('^1.100.0');
+    expect(manifest.engines.vscode).toBe('^1.120.0');
   });
 });

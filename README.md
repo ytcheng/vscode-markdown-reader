@@ -29,6 +29,7 @@ A focused reading view for long documents, with a synchronized table of contents
 - **Remember your TOC** — visibility and collapsed branches survive closing/reopening a document, independently for each document in the workspace.
 - **Fits your layout** — show or hide the TOC, resize it, choose its heading depth, and set a preferred reading width.
 - **Several documents at once** — each Markdown file gets its own independent reader tab.
+- **Keep diffs source-focused** — regular Markdown files open in the reader, while diffs continue to use VS Code's text diff editor.
 
 ## Getting started
 

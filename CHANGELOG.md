@@ -2,6 +2,11 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.7 — 2026-09-24
+
+- Use the configured reading font in the table of contents.
+- Keep Markdown diffs in the standard VS Code text diff while regular Markdown files continue to open in Markdown Reader.
+
 ## 0.3.6 — 2026-09-24
 
 - Redesign the Marketplace icon to make its Markdown connection clearer, with a transparent background.
