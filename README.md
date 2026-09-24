@@ -1,14 +1,18 @@
 # Markdown Reader
 
-> Read Markdown in VS Code with a synchronized table of contents, Shiki code highlighting, Mermaid diagrams, and KaTeX math — all in one tab, all offline.
+**Read Markdown like a document, right in your current VS Code tab.**
 
-[中文文档](README.zh-CN.md) · [GitHub repository](https://github.com/ytcheng/vscode-markdown-reader)
+A focused reading view for long documents, with a synchronized table of contents, highlighted code, Mermaid diagrams, and math. Great for specs, READMEs, plans, and AI-generated notes.
 
-![Markdown Reader showing a nested table of contents, Shiki code highlighting, a Mermaid diagram, KaTeX math, and a table](assets/markdown-reader-preview.png)
+![Reader table of contents and rendered plan; selecting a heading jumps to that section](assets/markdown-reader-demo.gif)
 
-Markdown Reader turns Markdown files into focused, document-style reading views without leaving your current editor tab. It is designed for people who read long specifications, notes, documentation, and AI-generated Markdown in VS Code.
+**Current-tab reading · Synchronized table of contents · Code, diagrams, and math**
+
+[Install from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=chengjian.vscode-markdown-reader) · [中文文档](README.zh-CN.md) · [GitHub repository](https://github.com/ytcheng/vscode-markdown-reader)
 
 ## Highlights
+
+![Markdown Reader showing a nested table of contents, Shiki code highlighting, a Mermaid diagram, KaTeX math, and a table](assets/markdown-reader-preview.png)
 
 - **Choose your theme and typography** — Reader / GitHub themes, light / dark / follow-VS-Code appearance, local body fonts and 12–32 px text.
 - **Large file mode** — automatically shows code, math and diagrams as source for documents of 1 MiB or larger.

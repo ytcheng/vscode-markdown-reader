@@ -23,28 +23,18 @@
    npm run check
    ```
 
-3. 提交并推送源码、`package.json` 与 `CHANGELOG.md` 到 `main`。
-4. 打包到被 Git 忽略的 `release/` 目录：
+3. 确认 GitHub 仓库已设置 `VSCE_PAT` Actions secret。PAT 必须具备 `Marketplace (Manage)` 权限；只保存为 GitHub secret，不得写入仓库、日志或对话。
+4. 提交并推送源码、文档、素材、`package.json`、`CHANGELOG.md` 和 `AGENTS.md` 到 `main`。
+5. 在该提交上创建与 `package.json` 版本匹配的 annotated tag，并推送到 GitHub：
 
    ```bash
-   npx @vscode/vsce package --no-dependencies \
-     --out release/vscode-markdown-reader-<version>.vsix
+   git tag -a v<version> -m "Release Markdown Reader <version>"
+   git push origin v<version>
    ```
 
-5. 首次在机器上发布时登录 Publisher；PAT 必须具备 `Marketplace (Manage)` 权限，且不得写入仓库、日志或对话：
+6. 推送 `v*` tag 会触发 `.github/workflows/publish-vscode-extension.yml`。GitHub Actions 会安装依赖、检查 tag 与 manifest 版本、运行 `npm run check`、打包 VSIX 并发布到 Visual Studio Marketplace。检查 Actions 运行结果，失败时修复后使用新版本号重新发布。
 
-   ```bash
-   npx @vscode/vsce login chengjian
-   ```
-
-6. 发布已验证的 VSIX，避免 `vsce publish` 自动改版本或创建 Git tag：
-
-   ```bash
-   npx @vscode/vsce publish \
-     --packagePath release/vscode-markdown-reader-<version>.vsix
-   ```
-
-7. 等待 Marketplace 索引数分钟后，使用下列命令安装并验证：
+7. 等待 Marketplace 索引数分钟后，安装扩展并验证：
 
    ```bash
    code --install-extension chengjian.vscode-markdown-reader

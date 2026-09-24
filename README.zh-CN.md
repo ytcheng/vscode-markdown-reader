@@ -1,14 +1,18 @@
 # Markdown Reader
 
-> 在 VS Code 的同一标签页中阅读 Markdown：同步目录、Shiki 代码高亮、Mermaid 图表与 KaTeX 数学公式，全部支持离线使用。
+**在 VS Code 当前标签页中，像读文档一样阅读 Markdown。**
 
-[English](README.md) · [GitHub 仓库](https://github.com/ytcheng/vscode-markdown-reader)
+专为长篇 Markdown 文档设计的阅读视图，带同步目录、代码高亮、Mermaid 图表和数学公式。适合阅读技术规范、README、开发计划和 AI 生成的笔记。
 
-![Markdown Reader 展示多级目录、Shiki 代码高亮、Mermaid 流程图、KaTeX 数学公式与表格](assets/markdown-reader-preview-zh-CN.png)
+![阅读视图显示同步目录和计划文档；点击标题即可跳转到相应章节](assets/markdown-reader-demo-zh-CN.gif)
 
-Markdown Reader 会在当前 VS Code 编辑器标签页中，将 `.md` 文件呈现为专注、舒适的文档阅读视图。它适合阅读长篇技术方案、笔记、文档，以及由 AI 生成的 Markdown 内容。
+**当前标签页阅读 · 同步目录 · 代码、图表与公式**
+
+[从 VS Code Marketplace 安装](https://marketplace.visualstudio.com/items?itemName=chengjian.vscode-markdown-reader) · [English](README.md) · [GitHub 仓库](https://github.com/ytcheng/vscode-markdown-reader)
 
 ## 主要特色
+
+![Markdown Reader 展示多级目录、Shiki 代码高亮、Mermaid 流程图、KaTeX 数学公式与表格](assets/markdown-reader-preview-zh-CN.png)
 
 - **主题与字体可选**：Reader / GitHub 主题，浅色、深色或跟随 VS Code 配色，自定义本机字体和 12–32 px 字号。
 - **大文件模式**：默认在 1 MiB 时自动启用，将代码、公式和图表显示为源码以减少渲染开销。

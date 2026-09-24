@@ -2,6 +2,11 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.5 — 2026-09-24
+
+- Refresh the English and Chinese Marketplace README introductions and add localized animated table-of-contents demos.
+- Clarify the Marketplace description around current-tab reading and document navigation.
+
 ## 0.3.4 — 2026-09-24
 
 - Follow the VS Code editor font size by default, with an option to use a custom reading font size.
