@@ -2,6 +2,10 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.6 — 2026-09-24
+
+- Redesign the Marketplace icon to make its Markdown connection clearer, with a transparent background.
+
 ## 0.3.5 — 2026-09-24
 
 - Refresh the English and Chinese Marketplace README introductions and add localized animated table-of-contents demos.
