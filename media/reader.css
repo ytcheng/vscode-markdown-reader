@@ -167,6 +167,7 @@ body:has(.toc[hidden]) .reader {
   display: inline-block;
   padding: 3px 4px;
   color: var(--vscode-sideBar-foreground, inherit);
+  font-family: var(--reader-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-size: var(--reader-font-size, 14px);
   line-height: 1.6;
   text-decoration: none;
