@@ -1,4 +1,5 @@
 import { MermaidFrame, type MermaidTheme } from './MermaidFrame.js';
+import { translate } from './localization.js';
 
 type RenderDiagram = (id: string, source: string, container: HTMLElement, theme: MermaidTheme) => Promise<{ svg: string }>;
 
@@ -34,7 +35,8 @@ export class MermaidRenderer {
         if (!figure.isConnected || this.#versions.get(figure) !== version || (document.body.dataset.readerColor ?? 'light') !== color) continue;
         const image = document.createElement('img');
         image.className = 'mermaid-diagram';
-        image.alt = 'Mermaid diagram';
+        image.lang = document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en';
+        image.alt = translate(document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en', 'mermaidAlt');
         image.dataset.readerColor = color;
         const viewBox = svg.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)?.[1].trim().split(/[\s,]+/).map(Number);
         if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {
@@ -52,8 +54,9 @@ export class MermaidRenderer {
         figure.querySelector('pre')!.hidden = false;
         const error = document.createElement('p');
         error.className = 'mermaid-error';
+        error.lang = document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en';
         error.setAttribute('role', 'status');
-        error.textContent = 'Unable to render Mermaid diagram. Check the source syntax.';
+        error.textContent = translate(document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en', 'mermaidRenderFailed');
         figure.append(error);
       } finally {
         if (this.#versions.get(figure) === version) this.#rendering.delete(figure);

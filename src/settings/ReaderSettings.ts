@@ -1,4 +1,5 @@
 export interface ReaderSettings {
+  language: ReaderLanguage;
   theme: 'reader' | 'github';
   colorMode: 'auto' | 'light' | 'dark';
   fontFamily: string;
@@ -10,18 +11,20 @@ export interface ReaderSettings {
   largeFileMode: 'auto' | 'on' | 'off';
   largeFileThresholdKb: number;
 }
+export type ReaderLanguage = 'auto' | 'en' | 'zh-CN';
 export type ReaderSettingKey = Exclude<keyof ReaderSettings, 'editorFontSize'>;
 export const defaultSettings: Readonly<ReaderSettings> = Object.freeze({
-  theme: 'reader', colorMode: 'light', fontFamily: '', fontSize: 16, fontSizeMode: 'editor',
+  language: 'auto', theme: 'reader', colorMode: 'light', fontFamily: '', fontSize: 16, fontSizeMode: 'editor',
   contentMaxWidth: 900, largeFileMode: 'auto', largeFileThresholdKb: 1024
 });
 export const settingKeys = Object.keys(defaultSettings) as ReaderSettingKey[];
 export const configurationKeys: Record<ReaderSettingKey, string> = {
-  theme: 'theme', colorMode: 'colorMode', fontFamily: 'fontFamily', fontSize: 'fontSize', fontSizeMode: 'fontSizeMode',
+  language: 'language', theme: 'theme', colorMode: 'colorMode', fontFamily: 'fontFamily', fontSize: 'fontSize', fontSizeMode: 'fontSizeMode',
   contentMaxWidth: 'content.maxWidth', largeFileMode: 'largeFile.mode', largeFileThresholdKb: 'largeFile.thresholdKb'
 };
 export function isSettingValue(key: string, value: unknown): boolean {
   switch (key) {
+    case 'language': return value === 'auto' || value === 'en' || value === 'zh-CN';
     case 'theme': return value === 'reader' || value === 'github';
     case 'colorMode': return ['auto', 'light', 'dark'].includes(String(value)) && typeof value === 'string';
     case 'largeFileMode': return ['auto', 'on', 'off'].includes(String(value)) && typeof value === 'string';

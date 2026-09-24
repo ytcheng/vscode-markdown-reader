@@ -1,5 +1,6 @@
 import { defaultSettings, effectiveFontSize, isSettingValue, normalizeSettings, type ReaderSettingKey, type ReaderSettings } from '../settings/ReaderSettings.js';
 import type { WebviewToExtensionMessage } from './messages.js';
+import { localizeStaticReaderUi, resolveReaderLanguage, translate } from './localization.js';
 
 export class ReaderControls {
   #settings: ReaderSettings = { ...defaultSettings };
@@ -31,6 +32,7 @@ export class ReaderControls {
     const merged = { ...settings };
     for (const [key, pending] of this.#pending) Object.assign(merged, { [key]: pending.value });
     this.#settings = normalizeSettings(merged);
+    this.#applyLanguage();
     const body = this.document.body;
     body.dataset.readerTheme = this.#settings.theme;
     body.style.setProperty('--reader-font-size', `${effectiveFontSize(this.#settings)}px`);
@@ -54,7 +56,7 @@ export class ReaderControls {
     this.get('reader-width-value').textContent = `${this.#settings.contentMaxWidth}px`;
     this.get<HTMLButtonElement>('reader-font-smaller').disabled = this.#settings.fontSize <= 12;
     this.get<HTMLButtonElement>('reader-font-larger').disabled = this.#settings.fontSize >= 32;
-    this.get('reader-large-file-note').textContent = `Automatic at ${this.#settings.largeFileThresholdKb} KiB. Large file mode shows code, math and diagrams as source. Turn it off for full rendering.`;
+    this.get('reader-large-file-note').textContent = translate(this.#language(), 'largeFileNote', { threshold: this.#settings.largeFileThresholdKb });
   }
   acknowledge(requestId: number, settings: ReaderSettings): void {
     for (const [key, pending] of this.#pending) if (pending.requestId === requestId) this.#pending.delete(key);
@@ -91,6 +93,26 @@ export class ReaderControls {
     body.dataset.readerColor = high ? 'high-contrast' : this.#settings.colorMode === 'auto'
       ? body.classList.contains('vscode-dark') ? 'dark' : 'light' : this.#settings.colorMode;
     if (previous !== body.dataset.readerColor) this.onColorChange?.(body.dataset.readerColor);
+  }
+  #applyLanguage(): void {
+    const language = resolveReaderLanguage(this.#settings.language, this.document.body.dataset.vscodeLanguage ?? this.document.documentElement.lang ?? 'en');
+    this.document.body.dataset.readerLanguage = language;
+    localizeStaticReaderUi(this.document, language);
+    for (const id of ['reader-actions', 'toc', 'toc-resizer', 'toc-drawer', 'toggle-toc', 'search-label', 'search-count', 'search-previous', 'search-next', 'search-close']) {
+      this.document.getElementById(id)?.setAttribute('lang', language);
+    }
+    this.get<HTMLInputElement>('reader-font-family').setAttribute('lang', 'en');
+    const menuToggle = this.get<HTMLButtonElement>('reader-menu-toggle');
+    menuToggle.setAttribute('aria-label', translate(language, 'readerMenu'));
+    menuToggle.title = translate(language, 'readerMenu');
+    const performance = this.get<HTMLButtonElement>('reader-performance');
+    performance.title = translate(language, 'largeFileTitle');
+    performance.setAttribute('aria-label', translate(language, 'largeFileAriaLabel'));
+    const tocToggle = this.get<HTMLButtonElement>('toggle-toc');
+    tocToggle?.setAttribute('aria-label', translate(language, 'toggleTableOfContents'));
+  }
+  #language(): 'en' | 'zh-CN' {
+    return this.document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en';
   }
   #menu(open: boolean, restore = false): void {
     this.get('reader-menu').hidden = !open;

@@ -2,6 +2,7 @@ import { ReaderControls } from './ReaderControls.js';
 import { MermaidRenderer } from './MermaidRenderer.js';
 import type { HeadingItem, RenderResult } from '../renderer/types.js';
 import type { ExtensionToWebviewMessage, ViewportState, WebviewToExtensionMessage } from './messages.js';
+import { translate, type ReaderUiLanguage } from './localization.js';
 
 interface TocNode {
   heading: HeadingItem;
@@ -39,6 +40,7 @@ export class ReaderApp {
   #searchOpen = false;
   #searchMatches: SearchMatch[] = [];
   #activeSearchMatchIndex = -1;
+  #language: ReaderUiLanguage = 'en';
 
   constructor(
     private readonly document: Document,
@@ -49,6 +51,7 @@ export class ReaderApp {
     if (this.#started) return;
     this.#started = true;
     this.#controls.start();
+    this.#syncLanguage();
     this.window.addEventListener('message', this.#onMessage);
     this.document.addEventListener('click', this.#onClick);
     this.document.addEventListener('dblclick', this.#onDoubleClick);
@@ -68,8 +71,8 @@ export class ReaderApp {
 
   handleMessage(message: ExtensionToWebviewMessage): void {
     switch (message.type) {
-      case 'setReaderSettings': this.#controls.apply(message.settings); return;
-      case 'settingsAcknowledged': this.#controls.acknowledge(message.requestId, message.settings); return;
+      case 'setReaderSettings': this.#controls.apply(message.settings); this.#syncLanguage(); return;
+      case 'settingsAcknowledged': this.#controls.acknowledge(message.requestId, message.settings); this.#syncLanguage(); return;
       case 'showSettings': this.#controls.openSettings(); return;
       case 'requestExport': this.#controls.requestExport(message.action); return;
       case 'render':
@@ -111,6 +114,7 @@ export class ReaderApp {
     const styles = this.document.getElementById('render-styles');
     if (styles) styles.textContent = result.styles ?? '';
     this.#addHeadingActions();
+    this.#syncLanguage();
 
     if (restore) {
       this.#tocVisible = restore.tocVisible;
@@ -194,11 +198,12 @@ export class ReaderApp {
       const actions = this.document.createElement('span');
       actions.className = 'heading-actions';
       for (const [attribute, label, text] of [
-        ['data-edit-heading', 'Edit heading in source', ''],
-        ['data-copy-heading', 'Copy Heading Link', '#']
+        ['data-edit-heading', translate(this.#language, 'editHeading'), ''],
+        ['data-copy-heading', translate(this.#language, 'copyHeadingLink'), '#']
       ]) {
         const button = this.document.createElement('button');
         button.type = 'button';
+        button.lang = this.#language;
         button.setAttribute(attribute, heading.slug);
         button.setAttribute('aria-label', label);
         button.title = label;
@@ -345,8 +350,6 @@ export class ReaderApp {
   #onSearchClose = (): void => this.#closeSearch();
 
   async #copyCode(button: HTMLButtonElement, code: string): Promise<void> {
-    const copyLabel = button.getAttribute('aria-label') ?? 'Copy code';
-
     try {
       if (this.window.navigator.clipboard?.writeText) {
         try {
@@ -358,17 +361,17 @@ export class ReaderApp {
         if (!this.#copyWithCommand(code)) throw new Error('Copy command failed');
       }
       button.dataset.copyState = 'copied';
-      button.setAttribute('aria-label', 'Code copied');
+      button.setAttribute('aria-label', translate(this.#language, 'codeCopied'));
       this.window.setTimeout(() => {
         delete button.dataset.copyState;
-        button.setAttribute('aria-label', copyLabel);
+        button.setAttribute('aria-label', this.#copyCodeLabel(button));
       }, 1_500);
     } catch {
       button.dataset.copyState = 'failed';
-      button.setAttribute('aria-label', 'Copy failed');
+      button.setAttribute('aria-label', translate(this.#language, 'copyFailed'));
       this.window.setTimeout(() => {
         delete button.dataset.copyState;
-        button.setAttribute('aria-label', copyLabel);
+        button.setAttribute('aria-label', this.#copyCodeLabel(button));
       }, 1_500);
     }
   }
@@ -455,10 +458,12 @@ export class ReaderApp {
     for (const node of nodes) {
       const item = this.document.createElement('li');
       const link = this.document.createElement('a');
+      link.lang = 'en';
       link.href = `#${node.heading.slug}`;
       link.dataset.readerSlug = node.heading.slug;
       link.dataset.headingLevel = String(node.heading.level);
-      link.textContent = node.heading.text || 'Untitled section';
+      const section = node.heading.text || translate(this.#language, 'untitledSection');
+      link.textContent = section;
       item.append(link);
 
       if (node.children.length > 0) {
@@ -466,9 +471,10 @@ export class ReaderApp {
         const toggle = this.document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'toc-branch-toggle';
+        toggle.lang = this.#language;
         toggle.dataset.toggleBranch = node.heading.slug;
         const collapsed = this.#collapsedSlugs.has(node.heading.slug);
-        toggle.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${node.heading.text || 'Untitled section'}`);
+        toggle.setAttribute('aria-label', translate(this.#language, collapsed ? 'expandSection' : 'collapseSection', { section }));
         toggle.setAttribute('aria-expanded', String(!collapsed));
         toggle.textContent = collapsed ? '▸' : '▾';
         childList.hidden = collapsed;
@@ -640,9 +646,47 @@ export class ReaderApp {
 
   #updateSearchControls(): void {
     const count = this.#searchMatches.length;
-    this.searchCount.textContent = count === 0 ? '0 of 0' : `${this.#activeSearchMatchIndex + 1} of ${count}`;
+    this.searchCount.textContent = count === 0 ? translate(this.#language, 'noMatches') : translate(this.#language, 'matchCount', { current: this.#activeSearchMatchIndex + 1, total: count });
     this.searchPreviousButton.disabled = count === 0;
     this.searchNextButton.disabled = count === 0;
+  }
+
+  #copyCodeLabel(button: HTMLButtonElement): string {
+    const language = button.dataset.codeLanguage;
+    return language ? translate(this.#language, 'copyLanguageCode', { language }) : translate(this.#language, 'copyCode');
+  }
+
+  #syncLanguage(): void {
+    const language = this.document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en';
+    const changed = language !== this.#language;
+    this.#language = language;
+    for (const button of this.article.querySelectorAll<HTMLButtonElement>('[data-copy-code]')) {
+      const status = button.dataset.copyState === 'copied' ? 'codeCopied' : button.dataset.copyState === 'failed' ? 'copyFailed' : undefined;
+      button.lang = this.#language;
+      button.setAttribute('aria-label', status ? translate(this.#language, status) : this.#copyCodeLabel(button));
+    }
+    for (const button of this.article.querySelectorAll<HTMLButtonElement>('[data-edit-heading]')) {
+      const label = translate(this.#language, 'editHeading');
+      button.lang = this.#language;
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+    for (const button of this.article.querySelectorAll<HTMLButtonElement>('[data-copy-heading]')) {
+      const label = translate(this.#language, 'copyHeadingLink');
+      button.lang = this.#language;
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+    for (const image of this.article.querySelectorAll<HTMLImageElement>('img.mermaid-diagram')) {
+      image.lang = this.#language;
+      image.alt = translate(this.#language, 'mermaidAlt');
+    }
+    for (const error of this.article.querySelectorAll<HTMLElement>('.mermaid-error')) {
+      error.lang = this.#language;
+      error.textContent = translate(this.#language, 'mermaidRenderFailed');
+    }
+    if (changed && this.#revision >= 0) this.#renderToc();
+    this.#updateSearchControls();
   }
 
   #navigateTo(slug: string): void {

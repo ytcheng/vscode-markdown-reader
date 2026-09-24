@@ -30,6 +30,7 @@ A focused reading view for long documents, with a synchronized table of contents
 - **Fits your layout** — show or hide the TOC, resize it, choose its heading depth, and set a preferred reading width.
 - **Several documents at once** — each Markdown file gets its own independent reader tab.
 - **Keep diffs source-focused** — regular Markdown files open in the reader, while diffs continue to use VS Code's text diff editor.
+- **Choose the interface language** — follow VS Code by default, or select English or Simplified Chinese in Reading Settings.
 
 ## Getting started
 
@@ -78,6 +79,7 @@ Configure Markdown Reader in VS Code Settings, or add the following to `settings
 
 ```json
 {
+  "markdownReader.language": "auto",
   "markdownReader.theme": "reader",
   "markdownReader.colorMode": "light",
   "markdownReader.fontFamily": "",
@@ -94,6 +96,7 @@ Configure Markdown Reader in VS Code Settings, or add the following to `settings
 
 | Setting | Default | Description |
 | --- | ---: | --- |
+| `markdownReader.language` | `auto` | Reader interface language: `auto` follows the VS Code display language; `en` and `zh-CN` select English or Simplified Chinese. |
 | `markdownReader.toc.enabled` | `true` | Show the table of contents when opening a document. |
 | `markdownReader.toc.maxDepth` | `3` | Include headings through this level (`1`–`6`). |
 | `markdownReader.toc.width` | `260` | Default TOC width in pixels (`180`–`480`). You can also resize it in the reader. |

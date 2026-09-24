@@ -1,8 +1,8 @@
 {
   "name": "vscode-markdown-reader",
-  "displayName": "Markdown Reader: Focus Mode",
-  "description": "Read Markdown in the current VS Code tab with a synchronized table of contents, code highlighting, Mermaid diagrams and math.",
-  "version": "0.3.7",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
+  "version": "0.3.8",
   "publisher": "chengjian",
   "private": true,
   "repository": {
@@ -90,7 +90,7 @@
     "customEditors": [
       {
         "viewType": "markdownReader.preview",
-        "displayName": "Markdown Reader",
+        "displayName": "%customEditor.displayName%",
         "selector": [
           {
             "filenamePattern": "*.md"
@@ -102,39 +102,39 @@
     "commands": [
       {
         "command": "markdownReader.openPreview",
-        "title": "Open Preview",
-        "category": "Markdown Reader"
+        "title": "%command.openPreview%",
+        "category": "%extension.name%"
       },
       {
         "command": "markdownReader.openSource",
-        "title": "Open Source",
-        "category": "Markdown Reader",
+        "title": "%command.openSource%",
+        "category": "%extension.name%",
         "icon": "$(edit)"
       },
       {
         "command": "markdownReader.togglePreview",
-        "title": "Toggle Preview",
-        "category": "Markdown Reader"
+        "title": "%command.togglePreview%",
+        "category": "%extension.name%"
       },
       {
         "command": "markdownReader.toggleToc",
-        "title": "Toggle Table of Contents",
-        "category": "Markdown Reader"
+        "title": "%command.toggleToc%",
+        "category": "%extension.name%"
       },
       {
         "command": "markdownReader.readingSettings",
-        "title": "Reading Settings",
-        "category": "Markdown Reader"
+        "title": "%command.readingSettings%",
+        "category": "%extension.name%"
       },
       {
         "command": "markdownReader.exportHtml",
-        "title": "Export HTML",
-        "category": "Markdown Reader"
+        "title": "%command.exportHtml%",
+        "category": "%extension.name%"
       },
       {
         "command": "markdownReader.print",
-        "title": "Print / Save as PDF",
-        "category": "Markdown Reader"
+        "title": "%command.print%",
+        "category": "%extension.name%"
       }
     ],
     "keybindings": [
@@ -175,29 +175,41 @@
       ]
     },
     "configuration": {
-      "title": "Markdown Reader",
+      "title": "%extension.name%",
       "properties": {
+        "markdownReader.language": {
+          "type": "string",
+          "enum": ["auto", "en", "zh-CN"],
+          "enumItemLabels": ["%setting.language.label.auto%", "%setting.language.label.en%", "%setting.language.label.zhCN%"],
+          "enumDescriptions": ["%setting.language.auto%", "%setting.language.en%", "%setting.language.zhCN%"],
+          "default": "auto",
+          "description": "%setting.language.description%"
+        },
         "markdownReader.toc.enabled": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "%setting.toc.enabled%"
         },
         "markdownReader.toc.maxDepth": {
           "type": "integer",
           "default": 3,
           "minimum": 1,
-          "maximum": 6
+          "maximum": 6,
+          "description": "%setting.toc.maxDepth%"
         },
         "markdownReader.toc.width": {
           "type": "integer",
           "default": 260,
           "minimum": 180,
-          "maximum": 480
+          "maximum": 480,
+          "description": "%setting.toc.width%"
         },
         "markdownReader.content.maxWidth": {
           "type": "integer",
           "default": 900,
           "minimum": 560,
           "maximum": 1600,
+          "description": "%setting.content.maxWidth%",
           "scope": "resource"
         },
         "markdownReader.theme": {
@@ -207,7 +219,8 @@
             "github"
           ],
           "default": "reader",
-          "description": "Reading typography theme.",
+          "description": "%setting.theme.description%",
+          "enumDescriptions": ["%setting.theme.reader%", "%setting.theme.github%"],
           "scope": "resource"
         },
         "markdownReader.colorMode": {
@@ -218,14 +231,15 @@
             "dark"
           ],
           "default": "light",
-          "description": "Reader appearance. Auto follows VS Code. High contrast always follows the workbench.",
+          "description": "%setting.colorMode.description%",
+          "enumDescriptions": ["%setting.colorMode.auto%", "%setting.colorMode.light%", "%setting.colorMode.dark%"],
           "scope": "resource"
         },
         "markdownReader.fontFamily": {
           "type": "string",
           "default": "",
           "maxLength": 200,
-          "description": "Body font family (installed locally), e.g. \"Noto Sans SC\", sans-serif. Empty uses system fonts. Code remains monospace.",
+          "description": "%setting.fontFamily.description%",
           "scope": "resource"
         },
         "markdownReader.fontSize": {
@@ -233,14 +247,15 @@
           "default": 16,
           "minimum": 12,
           "maximum": 32,
-          "description": "Body font size in pixels. Headings scale proportionally.",
+          "description": "%setting.fontSize.description%",
           "scope": "resource"
         },
         "markdownReader.fontSizeMode": {
           "type": "string",
           "enum": ["editor", "custom"],
           "default": "editor",
-          "description": "Follow the VS Code editor font size, or use markdownReader.fontSize.",
+          "description": "%setting.fontSizeMode.description%",
+          "enumDescriptions": ["%setting.fontSizeMode.editor%", "%setting.fontSizeMode.custom%"],
           "scope": "resource"
         },
         "markdownReader.largeFile.mode": {
@@ -251,7 +266,8 @@
             "off"
           ],
           "default": "auto",
-          "description": "Large file mode shows code, math and diagrams as source, preserving navigation and search.",
+          "description": "%setting.largeFile.mode.description%",
+          "enumDescriptions": ["%setting.largeFile.mode.auto%", "%setting.largeFile.mode.on%", "%setting.largeFile.mode.off%"],
           "scope": "resource"
         },
         "markdownReader.largeFile.thresholdKb": {
@@ -259,7 +275,7 @@
           "default": 1024,
           "minimum": 1,
           "maximum": 102400,
-          "description": "Automatic large file mode threshold in KiB (UTF-8 bytes).",
+          "description": "%setting.largeFile.thresholdKb.description%",
           "scope": "resource"
         }
       }

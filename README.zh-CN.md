@@ -30,6 +30,7 @@
 - **版式可调整**：可显示/隐藏目录、拖动调整目录宽度、设置目录深度与正文最大宽度。
 - **支持多文档并行阅读**：每个 Markdown 文件拥有独立的阅读标签页。
 - **Diff 保留源码对比**：普通 Markdown 文件默认用阅读视图打开；差异视图仍使用 VS Code 文本 diff。
+- **中英文界面**：默认跟随 VS Code 显示语言，也可以在阅读设置中单独选择英语或简体中文。
 
 ## 快速开始
 
@@ -78,6 +79,7 @@
 
 ```json
 {
+  "markdownReader.language": "auto",
   "markdownReader.theme": "reader",
   "markdownReader.colorMode": "light",
   "markdownReader.fontFamily": "",
@@ -94,6 +96,7 @@
 
 | 配置项 | 默认值 | 说明 |
 | --- | ---: | --- |
+| `markdownReader.language` | `auto` | 阅读器界面语言：`auto` 跟随 VS Code 显示语言；`en` 和 `zh-CN` 分别指定英语或简体中文。 |
 | `markdownReader.toc.enabled` | `true` | 打开文档时是否显示目录。 |
 | `markdownReader.toc.maxDepth` | `3` | 目录展示到第几级标题（`1`–`6`）。 |
 | `markdownReader.toc.width` | `260` | 目录默认宽度，单位为像素（`180`–`480`）；也可以在阅读器中拖动调整。 |

@@ -2,6 +2,7 @@
 (() => {
   // src/settings/ReaderSettings.ts
   var defaultSettings = Object.freeze({
+    language: "auto",
     theme: "reader",
     colorMode: "light",
     fontFamily: "",
@@ -14,6 +15,8 @@
   var settingKeys = Object.keys(defaultSettings);
   function isSettingValue(key, value) {
     switch (key) {
+      case "language":
+        return value === "auto" || value === "en" || value === "zh-CN";
       case "theme":
         return value === "reader" || value === "github";
       case "colorMode":
@@ -48,6 +51,171 @@
   }
   function effectiveFontSize(settings) {
     return settings.fontSizeMode === "editor" ? (settings.editorFontSize ?? 14) + 1 : settings.fontSize;
+  }
+
+  // src/webview/localization.ts
+  var messages = {
+    en: {
+      largeFileTitle: "Large file mode: syntax highlighting, math and diagrams are shown as source. Open settings to change.",
+      largeFileAriaLabel: "Large file mode enabled. Open settings",
+      readerMenu: "Reader menu",
+      viewSource: "View Source",
+      printPdf: "Print / Save as PDF\u2026",
+      exportHtml: "Export HTML\u2026",
+      readingSettings: "Reading Settings\u2026",
+      feedback: "Feedback",
+      about: "About",
+      closeSettings: "Close settings",
+      settingsTitle: "Reading Settings",
+      language: "Language",
+      languageAuto: "Auto (Follow VS Code)",
+      languageEnglish: "English",
+      languageChinese: "Chinese (Simplified)",
+      readingTheme: "Reading theme",
+      themeReader: "Reader",
+      themeGithub: "GitHub",
+      appearance: "Appearance",
+      followVsCode: "Follow VS Code",
+      light: "Light",
+      dark: "Dark",
+      bodyFont: "Body font",
+      systemDefault: "System default",
+      serif: "Serif",
+      monospace: "Monospace",
+      custom: "Custom",
+      customFont: "Custom font",
+      customFontExample: "e.g. Noto Sans SC, sans-serif",
+      fontSize: "Font size",
+      customSize: "Custom size",
+      decreaseFontSize: "Decrease font size",
+      fontSizePixels: "Font size in pixels",
+      increaseFontSize: "Increase font size",
+      followingEditorSize: "Following VS Code editor font size:",
+      readerDisplaySize: "Reader display:",
+      contentWidth: "Content width",
+      largeFileMode: "Large file mode",
+      automatic: "Automatic",
+      enabled: "On",
+      disabled: "Off",
+      largeFileNote: "Automatic at {threshold} KiB. Large file mode shows code, math and diagrams as source. Turn it off for full rendering.",
+      changesSaved: "Changes are saved automatically. Custom fonts must be installed on this computer.",
+      restoreDefaults: "Restore defaults",
+      moreVsCodeSettings: "More VS Code settings\u2026",
+      tableOfContents: "Table of contents",
+      resizeTableOfContents: "Resize table of contents",
+      toggleTableOfContents: "Toggle table of contents",
+      find: "Find",
+      previousMatch: "Previous match",
+      nextMatch: "Next match",
+      closeFind: "Close find",
+      editHeading: "Edit heading in source",
+      copyHeadingLink: "Copy Heading Link",
+      copyCode: "Copy code",
+      copyLanguageCode: "Copy {language} code",
+      codeCopied: "Code copied",
+      copyFailed: "Copy failed",
+      untitledSection: "Untitled section",
+      expandSection: "Expand {section}",
+      collapseSection: "Collapse {section}",
+      matchCount: "{current} of {total}",
+      noMatches: "0 of 0",
+      mermaidAlt: "Mermaid diagram",
+      mermaidRenderFailed: "Unable to render Mermaid diagram. Check the source syntax.",
+      errorPrefix: "Markdown Reader"
+    },
+    "zh-CN": {
+      largeFileTitle: "\u5927\u6587\u4EF6\u6A21\u5F0F\uFF1A\u8BED\u6CD5\u9AD8\u4EAE\u3001\u6570\u5B66\u516C\u5F0F\u548C\u56FE\u8868\u5C06\u663E\u793A\u4E3A\u6E90\u7801\u3002\u53EF\u5728\u8BBE\u7F6E\u4E2D\u66F4\u6539\u3002",
+      largeFileAriaLabel: "\u5927\u6587\u4EF6\u6A21\u5F0F\u5DF2\u542F\u7528\u3002\u6253\u5F00\u8BBE\u7F6E",
+      readerMenu: "\u9605\u8BFB\u5668\u83DC\u5355",
+      viewSource: "\u67E5\u770B\u6E90\u7801",
+      printPdf: "\u6253\u5370 / \u4FDD\u5B58\u4E3A PDF\u2026",
+      exportHtml: "\u5BFC\u51FA HTML\u2026",
+      readingSettings: "\u9605\u8BFB\u8BBE\u7F6E\u2026",
+      feedback: "\u53CD\u9988",
+      about: "\u5173\u4E8E",
+      closeSettings: "\u5173\u95ED\u8BBE\u7F6E",
+      settingsTitle: "\u9605\u8BFB\u8BBE\u7F6E",
+      language: "\u8BED\u8A00",
+      languageAuto: "\u81EA\u52A8\uFF08\u8DDF\u968F VS Code\uFF09",
+      languageEnglish: "English",
+      languageChinese: "\u7B80\u4F53\u4E2D\u6587",
+      readingTheme: "\u9605\u8BFB\u4E3B\u9898",
+      themeReader: "Reader",
+      themeGithub: "GitHub",
+      appearance: "\u5916\u89C2",
+      followVsCode: "\u8DDF\u968F VS Code",
+      light: "\u6D45\u8272",
+      dark: "\u6DF1\u8272",
+      bodyFont: "\u6B63\u6587\u5B57\u4F53",
+      systemDefault: "\u7CFB\u7EDF\u9ED8\u8BA4",
+      serif: "\u886C\u7EBF\u5B57\u4F53",
+      monospace: "\u7B49\u5BBD\u5B57\u4F53",
+      custom: "\u81EA\u5B9A\u4E49",
+      customFont: "\u81EA\u5B9A\u4E49\u5B57\u4F53",
+      customFontExample: "\u4F8B\u5982\uFF1ANoto Sans SC, sans-serif",
+      fontSize: "\u5B57\u53F7",
+      customSize: "\u81EA\u5B9A\u4E49\u5B57\u53F7",
+      decreaseFontSize: "\u51CF\u5C0F\u5B57\u53F7",
+      fontSizePixels: "\u5B57\u53F7\uFF08\u50CF\u7D20\uFF09",
+      increaseFontSize: "\u589E\u5927\u5B57\u53F7",
+      followingEditorSize: "\u8DDF\u968F VS Code \u7F16\u8F91\u5668\u5B57\u53F7\uFF1A",
+      readerDisplaySize: "\u9605\u8BFB\u5668\u663E\u793A\uFF1A",
+      contentWidth: "\u6B63\u6587\u5BBD\u5EA6",
+      largeFileMode: "\u5927\u6587\u4EF6\u6A21\u5F0F",
+      automatic: "\u81EA\u52A8",
+      enabled: "\u5F00\u542F",
+      disabled: "\u5173\u95ED",
+      largeFileNote: "\u8FBE\u5230 {threshold} KiB \u65F6\u81EA\u52A8\u542F\u7528\u3002\u5927\u6587\u4EF6\u6A21\u5F0F\u4F1A\u5C06\u4EE3\u7801\u3001\u516C\u5F0F\u548C\u56FE\u8868\u663E\u793A\u4E3A\u6E90\u7801\u3002\u5173\u95ED\u540E\u6062\u590D\u5B8C\u6574\u6E32\u67D3\u3002",
+      changesSaved: "\u66F4\u6539\u4F1A\u81EA\u52A8\u4FDD\u5B58\u3002\u81EA\u5B9A\u4E49\u5B57\u4F53\u9700\u8981\u5B89\u88C5\u5728\u672C\u673A\u3002",
+      restoreDefaults: "\u6062\u590D\u9ED8\u8BA4\u503C",
+      moreVsCodeSettings: "\u66F4\u591A VS Code \u8BBE\u7F6E\u2026",
+      tableOfContents: "\u76EE\u5F55",
+      resizeTableOfContents: "\u8C03\u6574\u76EE\u5F55\u5BBD\u5EA6",
+      toggleTableOfContents: "\u5207\u6362\u76EE\u5F55\u663E\u793A",
+      find: "\u67E5\u627E",
+      previousMatch: "\u4E0A\u4E00\u4E2A\u5339\u914D\u9879",
+      nextMatch: "\u4E0B\u4E00\u4E2A\u5339\u914D\u9879",
+      closeFind: "\u5173\u95ED\u67E5\u627E",
+      editHeading: "\u5728\u6E90\u7801\u4E2D\u7F16\u8F91\u6807\u9898",
+      copyHeadingLink: "\u590D\u5236\u6807\u9898\u94FE\u63A5",
+      copyCode: "\u590D\u5236\u4EE3\u7801",
+      copyLanguageCode: "\u590D\u5236 {language} \u4EE3\u7801",
+      codeCopied: "\u5DF2\u590D\u5236\u4EE3\u7801",
+      copyFailed: "\u590D\u5236\u5931\u8D25",
+      untitledSection: "\u672A\u547D\u540D\u7AE0\u8282",
+      expandSection: "\u5C55\u5F00 {section}",
+      collapseSection: "\u6298\u53E0 {section}",
+      matchCount: "\u7B2C {current} \u9879\uFF0C\u5171 {total} \u9879",
+      noMatches: "0 \u9879",
+      mermaidAlt: "Mermaid \u56FE\u8868",
+      mermaidRenderFailed: "Mermaid \u56FE\u8868\u6E32\u67D3\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6E90\u7801\u8BED\u6CD5\u3002",
+      errorPrefix: "Markdown Reader"
+    }
+  };
+  function resolveReaderLanguage(language, vscodeLanguage) {
+    if (language === "en" || language === "zh-CN") return language;
+    return /^zh(?:[-_]|$)/i.test(vscodeLanguage) ? "zh-CN" : "en";
+  }
+  function translate(language, key, values = {}) {
+    return messages[language][key].replace(/\{(\w+)\}/g, (_match, name) => String(values[name] ?? ""));
+  }
+  function localizeStaticReaderUi(document2, language) {
+    for (const element of document2.querySelectorAll("[data-i18n]")) {
+      const key = element.dataset.i18n;
+      element.textContent = translate(language, key);
+    }
+    for (const element of document2.querySelectorAll("[data-i18n-title]")) {
+      const key = element.dataset.i18nTitle;
+      element.title = translate(language, key);
+    }
+    for (const element of document2.querySelectorAll("[data-i18n-aria-label]")) {
+      const key = element.dataset.i18nAriaLabel;
+      element.setAttribute("aria-label", translate(language, key));
+    }
+    for (const element of document2.querySelectorAll("[data-i18n-placeholder]")) {
+      const key = element.dataset.i18nPlaceholder;
+      element.placeholder = translate(language, key);
+    }
   }
 
   // src/webview/ReaderControls.ts
@@ -88,6 +256,7 @@
       const merged = { ...settings };
       for (const [key, pending] of this.#pending) Object.assign(merged, { [key]: pending.value });
       this.#settings = normalizeSettings(merged);
+      this.#applyLanguage();
       const body = this.document.body;
       body.dataset.readerTheme = this.#settings.theme;
       body.style.setProperty("--reader-font-size", `${effectiveFontSize(this.#settings)}px`);
@@ -111,7 +280,7 @@
       this.get("reader-width-value").textContent = `${this.#settings.contentMaxWidth}px`;
       this.get("reader-font-smaller").disabled = this.#settings.fontSize <= 12;
       this.get("reader-font-larger").disabled = this.#settings.fontSize >= 32;
-      this.get("reader-large-file-note").textContent = `Automatic at ${this.#settings.largeFileThresholdKb} KiB. Large file mode shows code, math and diagrams as source. Turn it off for full rendering.`;
+      this.get("reader-large-file-note").textContent = translate(this.#language(), "largeFileNote", { threshold: this.#settings.largeFileThresholdKb });
     }
     acknowledge(requestId, settings) {
       for (const [key, pending] of this.#pending) if (pending.requestId === requestId) this.#pending.delete(key);
@@ -146,6 +315,26 @@
       const high = body.classList.contains("vscode-high-contrast") || body.classList.contains("vscode-high-contrast-light");
       body.dataset.readerColor = high ? "high-contrast" : this.#settings.colorMode === "auto" ? body.classList.contains("vscode-dark") ? "dark" : "light" : this.#settings.colorMode;
       if (previous !== body.dataset.readerColor) this.onColorChange?.(body.dataset.readerColor);
+    }
+    #applyLanguage() {
+      const language = resolveReaderLanguage(this.#settings.language, this.document.body.dataset.vscodeLanguage ?? this.document.documentElement.lang ?? "en");
+      this.document.body.dataset.readerLanguage = language;
+      localizeStaticReaderUi(this.document, language);
+      for (const id of ["reader-actions", "toc", "toc-resizer", "toc-drawer", "toggle-toc", "search-label", "search-count", "search-previous", "search-next", "search-close"]) {
+        this.document.getElementById(id)?.setAttribute("lang", language);
+      }
+      this.get("reader-font-family").setAttribute("lang", "en");
+      const menuToggle = this.get("reader-menu-toggle");
+      menuToggle.setAttribute("aria-label", translate(language, "readerMenu"));
+      menuToggle.title = translate(language, "readerMenu");
+      const performance = this.get("reader-performance");
+      performance.title = translate(language, "largeFileTitle");
+      performance.setAttribute("aria-label", translate(language, "largeFileAriaLabel"));
+      const tocToggle = this.get("toggle-toc");
+      tocToggle?.setAttribute("aria-label", translate(language, "toggleTableOfContents"));
+    }
+    #language() {
+      return this.document.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
     }
     #menu(open, restore = false) {
       this.get("reader-menu").hidden = !open;
@@ -393,7 +582,8 @@
           if (!figure.isConnected || this.#versions.get(figure) !== version || (document2.body.dataset.readerColor ?? "light") !== color) continue;
           const image = document2.createElement("img");
           image.className = "mermaid-diagram";
-          image.alt = "Mermaid diagram";
+          image.lang = document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
+          image.alt = translate(document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en", "mermaidAlt");
           image.dataset.readerColor = color;
           const viewBox = svg.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)?.[1].trim().split(/[\s,]+/).map(Number);
           if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {
@@ -410,8 +600,9 @@
           figure.querySelector("pre").hidden = false;
           const error = document2.createElement("p");
           error.className = "mermaid-error";
+          error.lang = document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
           error.setAttribute("role", "status");
-          error.textContent = "Unable to render Mermaid diagram. Check the source syntax.";
+          error.textContent = translate(document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en", "mermaidRenderFailed");
           figure.append(error);
         } finally {
           if (this.#versions.get(figure) === version) this.#rendering.delete(figure);
@@ -452,10 +643,12 @@
     #searchOpen = false;
     #searchMatches = [];
     #activeSearchMatchIndex = -1;
+    #language = "en";
     start() {
       if (this.#started) return;
       this.#started = true;
       this.#controls.start();
+      this.#syncLanguage();
       this.window.addEventListener("message", this.#onMessage);
       this.document.addEventListener("click", this.#onClick);
       this.document.addEventListener("dblclick", this.#onDoubleClick);
@@ -476,9 +669,11 @@
       switch (message.type) {
         case "setReaderSettings":
           this.#controls.apply(message.settings);
+          this.#syncLanguage();
           return;
         case "settingsAcknowledged":
           this.#controls.acknowledge(message.requestId, message.settings);
+          this.#syncLanguage();
           return;
         case "showSettings":
           this.#controls.openSettings();
@@ -524,6 +719,7 @@
       const styles = this.document.getElementById("render-styles");
       if (styles) styles.textContent = result.styles ?? "";
       this.#addHeadingActions();
+      this.#syncLanguage();
       if (restore) {
         this.#tocVisible = restore.tocVisible;
         this.#collapsedSlugs = new Set(restore.collapsedSlugs.filter((slug) => this.#headings.some((heading) => heading.slug === slug)));
@@ -595,11 +791,12 @@
         const actions = this.document.createElement("span");
         actions.className = "heading-actions";
         for (const [attribute, label, text] of [
-          ["data-edit-heading", "Edit heading in source", ""],
-          ["data-copy-heading", "Copy Heading Link", "#"]
+          ["data-edit-heading", translate(this.#language, "editHeading"), ""],
+          ["data-copy-heading", translate(this.#language, "copyHeadingLink"), "#"]
         ]) {
           const button = this.document.createElement("button");
           button.type = "button";
+          button.lang = this.#language;
           button.setAttribute(attribute, heading.slug);
           button.setAttribute("aria-label", label);
           button.title = label;
@@ -728,7 +925,6 @@
     #onSearchNext = () => this.#selectSearchMatch(this.#activeSearchMatchIndex + 1);
     #onSearchClose = () => this.#closeSearch();
     async #copyCode(button, code) {
-      const copyLabel = button.getAttribute("aria-label") ?? "Copy code";
       try {
         if (this.window.navigator.clipboard?.writeText) {
           try {
@@ -740,17 +936,17 @@
           if (!this.#copyWithCommand(code)) throw new Error("Copy command failed");
         }
         button.dataset.copyState = "copied";
-        button.setAttribute("aria-label", "Code copied");
+        button.setAttribute("aria-label", translate(this.#language, "codeCopied"));
         this.window.setTimeout(() => {
           delete button.dataset.copyState;
-          button.setAttribute("aria-label", copyLabel);
+          button.setAttribute("aria-label", this.#copyCodeLabel(button));
         }, 1500);
       } catch {
         button.dataset.copyState = "failed";
-        button.setAttribute("aria-label", "Copy failed");
+        button.setAttribute("aria-label", translate(this.#language, "copyFailed"));
         this.window.setTimeout(() => {
           delete button.dataset.copyState;
-          button.setAttribute("aria-label", copyLabel);
+          button.setAttribute("aria-label", this.#copyCodeLabel(button));
         }, 1500);
       }
     }
@@ -825,19 +1021,22 @@
       for (const node of nodes) {
         const item = this.document.createElement("li");
         const link = this.document.createElement("a");
+        link.lang = "en";
         link.href = `#${node.heading.slug}`;
         link.dataset.readerSlug = node.heading.slug;
         link.dataset.headingLevel = String(node.heading.level);
-        link.textContent = node.heading.text || "Untitled section";
+        const section = node.heading.text || translate(this.#language, "untitledSection");
+        link.textContent = section;
         item.append(link);
         if (node.children.length > 0) {
           const childList = this.#createTocList(node.children);
           const toggle = this.document.createElement("button");
           toggle.type = "button";
           toggle.className = "toc-branch-toggle";
+          toggle.lang = this.#language;
           toggle.dataset.toggleBranch = node.heading.slug;
           const collapsed = this.#collapsedSlugs.has(node.heading.slug);
-          toggle.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${node.heading.text || "Untitled section"}`);
+          toggle.setAttribute("aria-label", translate(this.#language, collapsed ? "expandSection" : "collapseSection", { section }));
           toggle.setAttribute("aria-expanded", String(!collapsed));
           toggle.textContent = collapsed ? "\u25B8" : "\u25BE";
           childList.hidden = collapsed;
@@ -989,9 +1188,45 @@
     }
     #updateSearchControls() {
       const count = this.#searchMatches.length;
-      this.searchCount.textContent = count === 0 ? "0 of 0" : `${this.#activeSearchMatchIndex + 1} of ${count}`;
+      this.searchCount.textContent = count === 0 ? translate(this.#language, "noMatches") : translate(this.#language, "matchCount", { current: this.#activeSearchMatchIndex + 1, total: count });
       this.searchPreviousButton.disabled = count === 0;
       this.searchNextButton.disabled = count === 0;
+    }
+    #copyCodeLabel(button) {
+      const language = button.dataset.codeLanguage;
+      return language ? translate(this.#language, "copyLanguageCode", { language }) : translate(this.#language, "copyCode");
+    }
+    #syncLanguage() {
+      const language = this.document.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
+      const changed = language !== this.#language;
+      this.#language = language;
+      for (const button of this.article.querySelectorAll("[data-copy-code]")) {
+        const status = button.dataset.copyState === "copied" ? "codeCopied" : button.dataset.copyState === "failed" ? "copyFailed" : void 0;
+        button.lang = this.#language;
+        button.setAttribute("aria-label", status ? translate(this.#language, status) : this.#copyCodeLabel(button));
+      }
+      for (const button of this.article.querySelectorAll("[data-edit-heading]")) {
+        const label = translate(this.#language, "editHeading");
+        button.lang = this.#language;
+        button.setAttribute("aria-label", label);
+        button.title = label;
+      }
+      for (const button of this.article.querySelectorAll("[data-copy-heading]")) {
+        const label = translate(this.#language, "copyHeadingLink");
+        button.lang = this.#language;
+        button.setAttribute("aria-label", label);
+        button.title = label;
+      }
+      for (const image of this.article.querySelectorAll("img.mermaid-diagram")) {
+        image.lang = this.#language;
+        image.alt = translate(this.#language, "mermaidAlt");
+      }
+      for (const error of this.article.querySelectorAll(".mermaid-error")) {
+        error.lang = this.#language;
+        error.textContent = translate(this.#language, "mermaidRenderFailed");
+      }
+      if (changed && this.#revision >= 0) this.#renderToc();
+      this.#updateSearchControls();
     }
     #navigateTo(slug) {
       if (!this.#headingElements.get(slug)) return;

@@ -13,6 +13,7 @@ import { MarkdownRenderer } from '../renderer/MarkdownRenderer.js';
 import { classifyLink } from '../security/links.js';
 import { parseWebviewMessage } from '../security/messages.js';
 import { getWebviewHtml } from '../webview/html.js';
+import { resolveReaderLanguage, translate } from '../webview/localization.js';
 import type { ViewportState } from '../webview/messages.js';
 
 export const MARKDOWN_READER_VIEW_TYPE = 'markdownReader.preview';
@@ -92,7 +93,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       katexStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'katex', 'katex.min.css')).toString(),
       scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.js')).toString(),
       styleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.css')).toString(),
-      highContrastStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'high-contrast.css')).toString()
+      highContrastStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'high-contrast.css')).toString(),
+      vscodeLanguage: vscode.env.language
     });
 
     session = this.#sessionFor(document);
@@ -110,7 +112,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     this.#watchFile(document);
 
     panel.onDidChangeViewState(() => { if (panel.active && this.#panels.has(panel)) { this.activeDocumentUri = document.uri; this.#activePanel = panel; this.#navigation.markActive(key, navigationPanel); } }, undefined, this.context.subscriptions);
-    webview.onDidReceiveMessage((raw) => void this.#handleMessage(raw, document, panel, navigationPanel).catch((error) => this.#reportError(error)), undefined, this.context.subscriptions);
+    webview.onDidReceiveMessage((raw) => void this.#handleMessage(raw, document, panel, navigationPanel).catch((error) => this.#reportError(error, document.uri)), undefined, this.context.subscriptions);
   }
 
   async openPreview(uri = this.activeDocumentUri): Promise<void> {
@@ -296,8 +298,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     if (uri) void this.#tocStates.set(uri, state).catch((error: unknown) => console.error('Unable to save Markdown Reader TOC state', error));
   }
 
-  #reportError(error: unknown): void {
-    void vscode.window.showErrorMessage(`Markdown Reader: ${error instanceof Error ? error.message : String(error)}`);
+  #reportError(error: unknown, documentUri = this.activeDocumentUri): void {
+    const settingsLanguage = documentUri ? readSettings(documentUri).language : 'auto';
+    const language = resolveReaderLanguage(settingsLanguage, vscode.env.language);
+    void vscode.window.showErrorMessage(`${translate(language, 'errorPrefix')}: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   async #postMessage(panel: vscode.WebviewPanel, message: unknown): Promise<boolean> {

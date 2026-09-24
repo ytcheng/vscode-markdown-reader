@@ -2,6 +2,10 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.8 — 2026-09-24
+
+- Add English and Simplified Chinese reader UI, following VS Code's display language by default with a separate language setting.
+
 ## 0.3.7 — 2026-09-24
 
 - Use the configured reading font in the table of contents.
