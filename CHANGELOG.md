@@ -2,6 +2,10 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## Unreleased
+
+- Add a full-preview zoom viewer for Mermaid diagrams and standalone Markdown images, with zoom, drag-to-pan, and fit controls.
+
 ## 0.3.8 — 2026-09-24
 
 - Add English and Simplified Chinese reader UI, following VS Code's display language by default with a separate language setting.

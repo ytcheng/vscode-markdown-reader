@@ -24,6 +24,7 @@ A focused reading view for long documents, with a synchronized table of contents
 - **Find in the document** — use <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> to search, highlight results, and move between matches.
 - **Shiki code highlighting** — TextMate grammars, language labels, and copy buttons; unknown languages remain readable plain text.
 - **Diagrams and math, offline** — Mermaid fenced diagrams and KaTeX inline/block formulas render with bundled resources.
+- **Zoomable diagrams and images** — click a Mermaid diagram or standalone Markdown image to open a viewer that fills the preview. Zoom with the bottom controls and drag to pan when the image overflows; linked images keep their link behavior.
 - **Edit what you read** — double-click body text or click the **pencil icon** beside a heading to open its source line in the same editor group.
 - **Copy heading links** — use **#** beside a heading to copy its encoded `#fragment` for links within that document.
 - **Remember your TOC** — visibility and collapsed branches survive closing/reopening a document, independently for each document in the workspace.
@@ -119,6 +120,8 @@ Markdown Reader supports the everyday Markdown features needed for documentation
 - In-document anchors, Markdown file links, and external web links
 
 Use fenced blocks labelled `mermaid` for diagrams, `$...$` for inline math, and `$$...$$` for display math. Mermaid diagrams follow the reading appearance, including dark mode, and update when it changes. Invalid diagrams retain their source with an error message; invalid formulas remain readable. All grammars, diagram code, fonts, and styles are bundled for offline use. Diagrams and formulas render locally without uploading document content or requiring an API key.
+
+Click a Mermaid diagram or a standalone Markdown image to open the zoom viewer. The bottom-center controls are ordered zoom out, current zoom, zoom in, and fit to the preview. Drag an oversized image to pan; close with the top-right button, Escape, or a click on the backdrop. Images wrapped in Markdown links keep their normal link navigation.
 
 Source navigation targets the beginning of the clicked Markdown block. Links, buttons, and form controls keep their normal behavior. TOC state is remembered for the most recent 100 document URIs in each workspace; existing split previews remain independent. `toc.enabled` sets the default for documents without saved state.
 
