@@ -18,6 +18,13 @@ export class ReaderControls {
     this.dialog.addEventListener('close', this.#closed);
     this.#observer = new MutationObserver(() => this.#color());
     this.#observer.observe(this.document.body, { attributes: true, attributeFilter: ['class'] });
+    const initialTheme = this.document.body.dataset.readerTheme;
+    const initialColorMode = this.document.body.dataset.readerColorMode;
+    this.#settings = normalizeSettings({
+      ...this.#settings,
+      ...(initialTheme ? { theme: initialTheme } : {}),
+      ...(initialColorMode ? { colorMode: initialColorMode } : {})
+    });
     this.apply(this.#settings);
   }
   dispose(): void {

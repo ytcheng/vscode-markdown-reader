@@ -1,5 +1,6 @@
 import { controlsHtml } from './controlsHtml.js';
 import { resolveReaderLanguage } from './localization.js';
+import type { ReaderSettings } from '../settings/ReaderSettings.js';
 export interface WebviewHtmlOptions {
   cspSource: string;
   nonce?: string;
@@ -10,12 +11,17 @@ export interface WebviewHtmlOptions {
   styleUri: string;
   highContrastStyleUri: string;
   vscodeLanguage?: string;
+  initialSettings?: Pick<ReaderSettings, 'theme' | 'colorMode'>;
 }
 
 export function getWebviewHtml(options: WebviewHtmlOptions): string {
   const vscodeLanguage = options.vscodeLanguage ?? 'en';
   const language = resolveReaderLanguage('auto', vscodeLanguage);
   const escapedVscodeLanguage = vscodeLanguage.replace(/[&"<>]/g, (character) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[character]!);
+  const readerTheme = options.initialSettings?.theme === 'github' ? 'github' : 'reader';
+  const configuredColorMode = options.initialSettings?.colorMode;
+  const readerColorMode = configuredColorMode === 'dark' || configuredColorMode === 'auto' ? configuredColorMode : 'light';
+  const readerColor = readerColorMode === 'auto' ? '' : ` data-reader-color="${readerColorMode}"`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,7 +34,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   <style id="render-styles" nonce="${options.nonce ?? ''}"></style>
   <script defer src="${options.scriptUri}"></script>
 </head>
-<body class="vscode-light" data-vscode-language="${escapedVscodeLanguage}" data-reader-language="${language}" data-mermaid-frame-uri="${options.mermaidFrameUri ?? ''}" data-mermaid-script-uri="${options.mermaidScriptUri ?? ''}">
+<body class="vscode-light" data-vscode-language="${escapedVscodeLanguage}" data-reader-language="${language}" data-reader-theme="${readerTheme}" data-reader-color-mode="${readerColorMode}"${readerColor} data-mermaid-frame-uri="${options.mermaidFrameUri ?? ''}" data-mermaid-script-uri="${options.mermaidScriptUri ?? ''}">
   ${controlsHtml}
   <div class="reader">
     <nav id="toc" class="toc" aria-label="Table of contents" data-i18n-aria-label="tableOfContents"></nav>

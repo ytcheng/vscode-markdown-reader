@@ -94,7 +94,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.js')).toString(),
       styleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.css')).toString(),
       highContrastStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'high-contrast.css')).toString(),
-      vscodeLanguage: vscode.env.language
+      vscodeLanguage: vscode.env.language,
+      initialSettings: readSettings(document.uri)
     });
 
     session = this.#sessionFor(document);

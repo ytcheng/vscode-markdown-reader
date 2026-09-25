@@ -50,7 +50,7 @@
     return typeof value === "number" && Number.isFinite(value) && value >= 6 && value <= 100;
   }
   function effectiveFontSize(settings) {
-    return settings.fontSizeMode === "editor" ? (settings.editorFontSize ?? 14) + 1 : settings.fontSize;
+    return settings.fontSizeMode === "editor" ? (settings.editorFontSize ?? 14) + 2 : settings.fontSize;
   }
 
   // src/webview/localization.ts
@@ -258,6 +258,13 @@
       this.dialog.addEventListener("close", this.#closed);
       this.#observer = new MutationObserver(() => this.#color());
       this.#observer.observe(this.document.body, { attributes: true, attributeFilter: ["class"] });
+      const initialTheme = this.document.body.dataset.readerTheme;
+      const initialColorMode = this.document.body.dataset.readerColorMode;
+      this.#settings = normalizeSettings({
+        ...this.#settings,
+        ...initialTheme ? { theme: initialTheme } : {},
+        ...initialColorMode ? { colorMode: initialColorMode } : {}
+      });
       this.apply(this.#settings);
     }
     dispose() {
