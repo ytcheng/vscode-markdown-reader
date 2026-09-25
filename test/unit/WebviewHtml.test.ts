@@ -35,3 +35,15 @@ it('restricts scripts to local resources and permits Mermaid generated styles', 
   expect(html).toContain('id="search-count"');
   expect(html).toContain('aria-live="polite"');
 });
+
+it('puts the saved dark appearance in the initial webview body', () => {
+  const html = getWebviewHtml({
+    cspSource: 'vscode-webview:',
+    scriptUri: 'webview://reader.js',
+    styleUri: 'webview://reader.css',
+    highContrastStyleUri: 'webview://hc.css',
+    initialSettings: { theme: 'github', colorMode: 'dark' }
+  });
+
+  expect(html).toContain('data-reader-theme="github" data-reader-color-mode="dark" data-reader-color="dark"');
+});

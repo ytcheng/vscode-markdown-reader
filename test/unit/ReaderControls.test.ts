@@ -9,6 +9,9 @@ const get = <T extends HTMLElement>(id: string) => document.getElementById(id) a
 beforeEach(() => {
   document.body.innerHTML = controlsHtml + '<article id="document"></article>';
   document.body.className = 'vscode-light';
+  document.body.removeAttribute('data-reader-theme');
+  document.body.removeAttribute('data-reader-color-mode');
+  document.body.removeAttribute('data-reader-color');
   HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new Event('close')); };
   post.mockClear();
@@ -23,9 +26,20 @@ it('follows the VS Code editor font size by default', () => {
   expect(get<HTMLSelectElement>('reader-font-size-mode').value).toBe('editor');
   expect(get('reader-font-size-control').hidden).toBe(true);
   expect(get('reader-font-size-follow-note').hidden).toBe(false);
-  expect(document.body.style.getPropertyValue('--reader-font-size')).toBe('20px');
+  expect(document.body.style.getPropertyValue('--reader-font-size')).toBe('21px');
   expect(get('reader-editor-font-size-value').textContent).toBe('19px');
-  expect(get('reader-effective-font-size-value').textContent).toBe('20px');
+  expect(get('reader-effective-font-size-value').textContent).toBe('21px');
+});
+it('starts from the saved dark theme before receiving host settings', () => {
+  controls.dispose();
+  document.body.dataset.readerTheme = 'github';
+  document.body.dataset.readerColorMode = 'dark';
+  document.body.dataset.readerColor = 'dark';
+  controls = new ReaderControls(document, post);
+  controls.start();
+  expect(document.body.dataset.readerTheme).toBe('github');
+  expect(document.body.dataset.readerColorMode).toBe('dark');
+  expect(document.body.dataset.readerColor).toBe('dark');
 });
 it('opens the menu with keyboard navigation and returns focus on Escape', () => {
   get('reader-menu-toggle').click();

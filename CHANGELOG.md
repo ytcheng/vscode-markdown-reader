@@ -2,6 +2,11 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.10 — 2026-09-25
+
+- Increase the reader font size by an additional 1px when following VS Code's editor font size.
+- Apply the saved reading appearance before the webview's first render to prevent a white flash in dark mode.
+
 ## 0.3.9 — 2026-09-25
 
 - Add a selection-based edit action at the upper-right of selected text to open its source block, and remove double-click source navigation.
