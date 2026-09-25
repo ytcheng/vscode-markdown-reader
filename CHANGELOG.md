@@ -2,8 +2,9 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
-## Unreleased
+## 0.3.9 — 2026-09-25
 
+- Add a selection-based edit action at the upper-right of selected text to open its source block, and remove double-click source navigation.
 - Add a full-preview zoom viewer for Mermaid diagrams and standalone Markdown images, with zoom, drag-to-pan, and fit controls.
 
 ## 0.3.8 — 2026-09-24

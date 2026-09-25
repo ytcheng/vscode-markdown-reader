@@ -445,14 +445,11 @@ describe('ReaderApp', () => {
 
 
 describe('V0.2 reading interactions', () => {
-  it('double-clicks the closest body source block but ignores links and controls', () => {
+  it('does not navigate to source on body double-click', () => {
     const { app, postMessage } = setup();
     app.applyRender({ ...renderResult(), html: '<blockquote data-source-line="2"><p data-source-line="3"><em>text</em><a href="#one">link</a><button>control</button></p></blockquote>' });
     document.querySelector('#document em')!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
-    expect(postMessage).toHaveBeenLastCalledWith({ type: 'openSource', line: 3 });
-    postMessage.mockClear();
-    for (const selector of ['a', 'button']) document.querySelector(`#document ${selector}`)!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
-    expect(postMessage).not.toHaveBeenCalled();
+    expect(postMessage).not.toHaveBeenCalledWith({ type: 'openSource', line: 3 });
   });
 
   it('adds accessible heading actions that edit the heading and copy its encoded fragment', async () => {

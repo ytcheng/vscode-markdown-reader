@@ -25,7 +25,7 @@ A focused reading view for long documents, with a synchronized table of contents
 - **Shiki code highlighting** — TextMate grammars, language labels, and copy buttons; unknown languages remain readable plain text.
 - **Diagrams and math, offline** — Mermaid fenced diagrams and KaTeX inline/block formulas render with bundled resources.
 - **Zoomable diagrams and images** — click a Mermaid diagram or standalone Markdown image to open a viewer that fills the preview. Zoom with the bottom controls and drag to pan when the image overflows; linked images keep their link behavior.
-- **Edit what you read** — double-click body text or click the **pencil icon** beside a heading to open its source line in the same editor group.
+- **Edit what you read** — select body text, then click the pencil that appears above the selection's end, or click the **pencil icon** beside a heading to open its source line in the same editor group.
 - **Copy heading links** — use **#** beside a heading to copy its encoded `#fragment` for links within that document.
 - **Remember your TOC** — visibility and collapsed branches survive closing/reopening a document, independently for each document in the workspace.
 - **Fits your layout** — show or hide the TOC, resize it, choose its heading depth, and set a preferred reading width.
@@ -45,7 +45,7 @@ A focused reading view for long documents, with a synchronized table of contents
 | --- | --- |
 | Open the reading view | Run **Markdown Reader: Open Preview** |
 | Return to the Markdown source | Run **Markdown Reader: Open Source** |
-| Edit a specific passage | Double-click the passage, or click a heading’s pencil icon |
+| Edit a specific passage | Select text and click the pencil above its end, or click a heading’s pencil icon |
 | Copy a heading link | Click **#** beside the heading |
 | Toggle Source / Preview | <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd> |
 | Show or hide the table of contents | Run **Markdown Reader: Toggle Table of Contents** |
@@ -123,7 +123,7 @@ Use fenced blocks labelled `mermaid` for diagrams, `$...$` for inline math, and 
 
 Click a Mermaid diagram or a standalone Markdown image to open the zoom viewer. The bottom-center controls are ordered zoom out, current zoom, zoom in, and fit to the preview. Drag an oversized image to pan; close with the top-right button, Escape, or a click on the backdrop. Images wrapped in Markdown links keep their normal link navigation.
 
-Source navigation targets the beginning of the clicked Markdown block. Links, buttons, and form controls keep their normal behavior. TOC state is remembered for the most recent 100 document URIs in each workspace; existing split previews remain independent. `toc.enabled` sets the default for documents without saved state.
+Source navigation from a text selection targets the beginning of its Markdown block. Links, buttons, and form controls keep their normal behavior. TOC state is remembered for the most recent 100 document URIs in each workspace; existing split previews remain independent. `toc.enabled` sets the default for documents without saved state.
 
 Raw Markdown HTML remains disabled. Diagrams are rendered in a sandboxed local frame and displayed as non-interactive SVG images. Generated heading controls are excluded from search; diagram and formula internals are not searched.
 

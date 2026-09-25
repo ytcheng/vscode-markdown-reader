@@ -43,6 +43,9 @@ export class ReaderApp {
   #searchMatches: SearchMatch[] = [];
   #activeSearchMatchIndex = -1;
   #language: ReaderUiLanguage = 'en';
+  #selectionEditButton: HTMLButtonElement | undefined;
+  #selectionEditLine: number | undefined;
+  #selectionEditTimer: number | undefined;
 
   constructor(
     private readonly document: Document,
@@ -57,9 +60,10 @@ export class ReaderApp {
     this.#started = true;
     this.#controls.start();
     this.#syncLanguage();
+    this.#selectionEditButton = this.#createSelectionEditButton();
     this.window.addEventListener('message', this.#onMessage);
     this.document.addEventListener('click', this.#onClick);
-    this.document.addEventListener('dblclick', this.#onDoubleClick);
+    this.document.addEventListener('selectionchange', this.#onSelectionChange);
     this.document.addEventListener('scrollend', this.#onScrollEnd);
     this.window.addEventListener('keydown', this.#onKeyDown);
     this.window.addEventListener('scroll', this.#onScroll, { passive: true });
@@ -105,9 +109,11 @@ export class ReaderApp {
   applyRender(result: RenderResult, restore?: ViewportState): void {
     if (result.revision <= this.#revision) return;
     this.#imageZoom.close(false);
+    this.#cancelSelectionEditTimer();
     restore ??= this.#revision < 0 ? this.api.getState() : this.captureViewport();
     this.#clearSearchMatches();
     this.#updateSearchControls();
+    this.#hideSelectionEdit();
     this.#revision = result.revision;
     this.#controls.setRevision(result.revision);
     this.#controls.setLargeFile(result.largeFile ?? false);
@@ -153,9 +159,10 @@ export class ReaderApp {
   dispose(): void {
     this.#controls.dispose();
     this.#imageZoom.dispose();
+    this.#cancelSelectionEditTimer();
     this.window.removeEventListener('message', this.#onMessage);
     this.document.removeEventListener('click', this.#onClick);
-    this.document.removeEventListener('dblclick', this.#onDoubleClick);
+    this.document.removeEventListener('selectionchange', this.#onSelectionChange);
     this.document.removeEventListener('scrollend', this.#onScrollEnd);
     this.window.removeEventListener('keydown', this.#onKeyDown);
     this.window.removeEventListener('scroll', this.#onScroll);
@@ -169,6 +176,8 @@ export class ReaderApp {
     this.window.removeEventListener('pointerup', this.#onResizerPointerUp);
     this.#observer?.disconnect();
     this.#mermaid.dispose();
+    this.#selectionEditButton?.remove();
+    this.#selectionEditButton = undefined;
     if (this.#scrollFrame !== undefined) this.window.cancelAnimationFrame(this.#scrollFrame);
     this.#started = false;
   }
@@ -224,19 +233,103 @@ export class ReaderApp {
     }
   }
 
-  #onDoubleClick = (event: MouseEvent): void => {
-    const target = event.target;
-    if (!(target instanceof Element) || !this.article.contains(target)) return;
-    if (target.closest('a, button, input, textarea, select, [contenteditable]')) return;
-    const block = target.closest<HTMLElement>('[data-source-line]');
-    if (!block || !this.article.contains(block)) return;
-    const line = Number(block.dataset.sourceLine);
-    if (Number.isSafeInteger(line) && line >= 0) this.api.postMessage({ type: 'openSource', line });
+  #createSelectionEditButton(): HTMLButtonElement {
+    const button = this.document.createElement('button');
+    const label = translate(this.#language, 'editSelectionInSource');
+    button.type = 'button';
+    button.className = 'selection-edit-button';
+    button.dataset.editSelection = '';
+    button.hidden = true;
+    button.lang = this.#language;
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 5l4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z"/></svg>';
+    button.addEventListener('mousedown', (event) => event.preventDefault());
+    this.document.body.append(button);
+    return button;
+  }
+
+  #onSelectionChange = (): void => {
+    const selection = this.window.getSelection();
+    this.#cancelSelectionEditTimer();
+    this.#hideSelectionEdit();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !selection.toString().trim()) return;
+
+    this.#selectionEditTimer = this.window.setTimeout(() => {
+      this.#selectionEditTimer = undefined;
+      this.#positionSelectionEdit();
+    }, 100);
   };
+
+  #positionSelectionEdit(): void {
+    const button = this.#selectionEditButton;
+    const selection = this.window.getSelection();
+    if (!button || !selection || selection.isCollapsed || selection.rangeCount === 0 || !selection.toString().trim()) {
+      this.#hideSelectionEdit();
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!this.article.contains(range.commonAncestorContainer)) {
+      this.#hideSelectionEdit();
+      return;
+    }
+
+    const start = range.startContainer.nodeType === 1
+      ? range.startContainer as Element
+      : range.startContainer.parentElement;
+    if (start?.closest('button, input, textarea, select, [contenteditable]')) {
+      this.#hideSelectionEdit();
+      return;
+    }
+    const block = start?.closest<HTMLElement>('[data-source-line]');
+    const line = Number(block?.dataset.sourceLine);
+    if (!block || !this.article.contains(block) || !Number.isSafeInteger(line) || line < 0) {
+      this.#hideSelectionEdit();
+      return;
+    }
+
+    this.#selectionEditLine = line;
+    const rects = range.getClientRects();
+    const selectionRect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect();
+    button.hidden = false;
+
+    const buttonWidth = button.offsetWidth || 26;
+    const buttonHeight = button.offsetHeight || 24;
+    const padding = 8;
+    const gap = 0;
+    const viewportWidth = this.window.innerWidth || this.document.documentElement.clientWidth || buttonWidth + padding * 2;
+    const viewportHeight = this.window.innerHeight || this.document.documentElement.clientHeight || buttonHeight + padding * 2;
+    const right = selectionRect.right + gap;
+    const left = right + buttonWidth <= viewportWidth - padding
+      ? right
+      : selectionRect.left - buttonWidth - gap;
+    const top = selectionRect.top - buttonHeight - gap;
+    button.style.left = `${Math.max(padding, Math.min(viewportWidth - buttonWidth - padding, left))}px`;
+    button.style.top = `${Math.max(padding, Math.min(viewportHeight - buttonHeight - padding, top))}px`;
+  }
+
+  #cancelSelectionEditTimer(): void {
+    if (this.#selectionEditTimer === undefined) return;
+    this.window.clearTimeout(this.#selectionEditTimer);
+    this.#selectionEditTimer = undefined;
+  }
+
+  #hideSelectionEdit(): void {
+    this.#selectionEditLine = undefined;
+    if (this.#selectionEditButton) this.#selectionEditButton.hidden = true;
+  }
 
   #onClick = (event: MouseEvent): void => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    if (target.closest('[data-edit-selection]')) {
+      const line = this.#selectionEditLine;
+      this.#hideSelectionEdit();
+      if (line !== undefined) this.api.postMessage({ type: 'openSource', line });
+      return;
+    }
 
     const zoomableImage = target.closest<HTMLImageElement>('img.mermaid-diagram, img.reader-image-zoom');
     if (zoomableImage && this.article.contains(zoomableImage)) {
@@ -699,6 +792,12 @@ export class ReaderApp {
       button.lang = this.#language;
       button.setAttribute('aria-label', label);
       button.title = label;
+    }
+    if (this.#selectionEditButton) {
+      const label = translate(this.#language, 'editSelectionInSource');
+      this.#selectionEditButton.lang = this.#language;
+      this.#selectionEditButton.setAttribute('aria-label', label);
+      this.#selectionEditButton.title = label;
     }
     for (const image of this.article.querySelectorAll<HTMLImageElement>('img.mermaid-diagram')) {
       image.lang = this.#language;

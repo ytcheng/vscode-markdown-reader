@@ -519,23 +519,34 @@ body.vscode-light .markdown-body code {
   margin-left: 8px;
   vertical-align: middle;
   opacity: 0;
-  button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    min-height: 24px;
-    padding: 2px 5px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    color: var(--text-muted);
-    background: transparent;
-    font: 12px/1.4 sans-serif;
-    cursor: pointer;
-  }
+}
+.markdown-body .heading-actions button,
+.selection-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 2px 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  font: 12px/1.4 sans-serif;
+  cursor: pointer;
 }
 .markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-actions,
 .markdown-body .heading-actions:focus-within { opacity: 1; }
+.selection-edit-button {
+  position: fixed;
+  z-index: 7;
+}
+body[data-reader-color='light'] .selection-edit-button {
+  color: #24292f;
+  border-color: #6e7781;
+}
+.selection-edit-button[hidden] { display: none; }
+.selection-edit-button svg { display: block; }
 .toc li, .toc-drawer li { position: relative; }
 .toc li > a, .toc-drawer li > a { padding-left: 20px; }
 .toc-branch-toggle {

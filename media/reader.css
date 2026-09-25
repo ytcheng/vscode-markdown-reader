@@ -1009,7 +1009,8 @@ body.vscode-light .markdown-body code {
   vertical-align: middle;
   opacity: 0;
 }
-.markdown-body .heading-actions button {
+.markdown-body .heading-actions button,
+.selection-edit-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1026,6 +1027,20 @@ body.vscode-light .markdown-body code {
 .markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-actions,
 .markdown-body .heading-actions:focus-within {
   opacity: 1;
+}
+.selection-edit-button {
+  position: fixed;
+  z-index: 7;
+}
+body[data-reader-color='light'] .selection-edit-button {
+  color: #24292f;
+  border-color: #6e7781;
+}
+.selection-edit-button[hidden] {
+  display: none;
+}
+.selection-edit-button svg {
+  display: block;
 }
 .toc li,
 .toc-drawer li {
