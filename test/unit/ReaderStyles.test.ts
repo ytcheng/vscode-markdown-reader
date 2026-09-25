@@ -86,13 +86,14 @@ it('uses a compact, light-text search input like the editor find control', async
   expect(css).toMatch(/\.search-bar input\s*\{[^}]*height:\s*26px[^}]*padding:\s*1px 6px[^}]*color:\s*var\(--vscode-input-foreground, #f0f0f0\)/s);
 });
 
-it('keeps the desktop search bar width stable as the match count changes', async () => {
+it('keeps find input and result widths stable across localized match counts', async () => {
   const source = await readFile('media/reader.less', 'utf8');
   const { css } = await less.render(source, { filename: 'media/reader.less' });
 
-  expect(css).toMatch(/\.search-bar\s*\{[^}]*width:\s*338px[^}]*box-sizing:\s*border-box/s);
-  expect(css).toMatch(/\.search-bar input\s*\{[^}]*flex:\s*1[^}]*width:\s*auto/s);
-  expect(css).toMatch(/\.search-count\s*\{[^}]*width:\s*56px/s);
+  expect(css).toMatch(/\.search-bar\s*\{[^}]*z-index:\s*9[^}]*top:\s*0[^}]*width:\s*350px[^}]*box-sizing:\s*border-box/s);
+  expect(css).toMatch(/\.search-bar input\s*\{[^}]*flex:\s*0 0 148px[^}]*width:\s*148px/s);
+  expect(css).toMatch(/\.search-count\s*\{[^}]*flex:\s*0 0 108px[^}]*white-space:\s*nowrap/s);
+  expect(css).toMatch(/@media \(max-width: 800px\)\s*\{[\s\S]*?\.search-bar\s*\{[^}]*left:\s*auto[^}]*width:\s*min\(350px, calc\(100vw - 64px\)\)/s);
 });
 
 it('uses clear enabled find controls and the editor focus border', async () => {

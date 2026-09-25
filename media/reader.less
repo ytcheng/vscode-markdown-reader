@@ -233,10 +233,10 @@ body:has(.toc[hidden]) .toc-resizer {
 
 .search-bar {
   position: fixed;
-  z-index: 6;
-  top: 12px;
+  z-index: 9;
+  top: 0;
   right: 24px;
-  width: 338px;
+  width: 350px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -264,8 +264,8 @@ body:has(.toc[hidden]) .toc-resizer {
 }
 
 .search-bar input {
-  flex: 1;
-  width: auto;
+  flex: 0 0 148px;
+  width: 148px;
   min-width: 0;
   height: 26px;
   box-sizing: border-box;
@@ -277,9 +277,7 @@ body:has(.toc[hidden]) .toc-resizer {
 }
 
 .search-count {
-  width: 56px;
-  min-width: 0;
-  flex: 0 0 56px;
+  flex: 0 0 108px;
   color: var(--vscode-descriptionForeground, var(--text-muted));
   font-size: 12px;
   text-align: center;
@@ -491,8 +489,8 @@ body.vscode-light .markdown-body code {
 
   .search-bar {
     right: 12px;
-    left: 52px;
-    width: auto;
+    left: auto;
+    width: min(350px, calc(100vw - 64px));
   }
 
   .search-bar input {
