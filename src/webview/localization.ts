@@ -23,6 +23,8 @@ const messages = {
     copyHeadingLink: 'Copy Heading Link', copyCode: 'Copy code', copyLanguageCode: 'Copy {language} code', codeCopied: 'Code copied',
     copyFailed: 'Copy failed', untitledSection: 'Untitled section', expandSection: 'Expand {section}', collapseSection: 'Collapse {section}',
     matchCount: '{current} of {total}', noMatches: '0 of 0', mermaidAlt: 'Mermaid diagram',
+    openMermaidDiagram: 'Open Mermaid diagram in zoom viewer', openImageInZoomViewer: 'Open image in zoom viewer',
+    zoomViewerTitle: 'Image zoom viewer', zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomFit: 'Fit to window', zoomClose: 'Close image viewer',
     mermaidRenderFailed: 'Unable to render Mermaid diagram. Check the source syntax.', errorPrefix: 'Markdown Reader',
   },
   'zh-CN': {
@@ -45,6 +47,8 @@ const messages = {
     copyHeadingLink: '复制标题链接', copyCode: '复制代码', copyLanguageCode: '复制 {language} 代码', codeCopied: '已复制代码',
     copyFailed: '复制失败', untitledSection: '未命名章节', expandSection: '展开 {section}', collapseSection: '折叠 {section}',
     matchCount: '第 {current} 项，共 {total} 项', noMatches: '0 项', mermaidAlt: 'Mermaid 图表',
+    openMermaidDiagram: '点击放大 Mermaid 图', openImageInZoomViewer: '点击放大图片',
+    zoomViewerTitle: '图片放大预览', zoomIn: '放大', zoomOut: '缩小', zoomFit: '适应窗口', zoomClose: '关闭图片预览',
     mermaidRenderFailed: 'Mermaid 图表渲染失败，请检查源码语法。', errorPrefix: 'Markdown Reader',
   }
 } satisfies Record<string, Record<string, string>>;

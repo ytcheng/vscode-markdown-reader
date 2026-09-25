@@ -120,6 +120,13 @@
       matchCount: "{current} of {total}",
       noMatches: "0 of 0",
       mermaidAlt: "Mermaid diagram",
+      openMermaidDiagram: "Open Mermaid diagram in zoom viewer",
+      openImageInZoomViewer: "Open image in zoom viewer",
+      zoomViewerTitle: "Image zoom viewer",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      zoomFit: "Fit to window",
+      zoomClose: "Close image viewer",
       mermaidRenderFailed: "Unable to render Mermaid diagram. Check the source syntax.",
       errorPrefix: "Markdown Reader"
     },
@@ -188,6 +195,13 @@
       matchCount: "\u7B2C {current} \u9879\uFF0C\u5171 {total} \u9879",
       noMatches: "0 \u9879",
       mermaidAlt: "Mermaid \u56FE\u8868",
+      openMermaidDiagram: "\u70B9\u51FB\u653E\u5927 Mermaid \u56FE",
+      openImageInZoomViewer: "\u70B9\u51FB\u653E\u5927\u56FE\u7247",
+      zoomViewerTitle: "\u56FE\u7247\u653E\u5927\u9884\u89C8",
+      zoomIn: "\u653E\u5927",
+      zoomOut: "\u7F29\u5C0F",
+      zoomFit: "\u9002\u5E94\u7A97\u53E3",
+      zoomClose: "\u5173\u95ED\u56FE\u7247\u9884\u89C8",
       mermaidRenderFailed: "Mermaid \u56FE\u8868\u6E32\u67D3\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6E90\u7801\u8BED\u6CD5\u3002",
       errorPrefix: "Markdown Reader"
     }
@@ -584,6 +598,9 @@
           image.className = "mermaid-diagram";
           image.lang = document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
           image.alt = translate(document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en", "mermaidAlt");
+          image.setAttribute("role", "button");
+          image.tabIndex = 0;
+          image.setAttribute("aria-label", translate(document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en", "openMermaidDiagram"));
           image.dataset.readerColor = color;
           const viewBox = svg.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)?.[1].trim().split(/[\s,]+/).map(Number);
           if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {
@@ -612,6 +629,249 @@
     }
   };
 
+  // src/webview/ImageZoomDialog.ts
+  var MIN_ZOOM = 0.5;
+  var MAX_ZOOM = 4;
+  var ZOOM_STEP = 1.25;
+  var SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+  function createZoomIcon(document2, icon) {
+    const svg = document2.createElementNS(SVG_NAMESPACE, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "24");
+    svg.setAttribute("height", "24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    if (icon === "zoomIn" || icon === "zoomOut") {
+      const lens = document2.createElementNS(SVG_NAMESPACE, "circle");
+      lens.setAttribute("cx", "10.5");
+      lens.setAttribute("cy", "10.5");
+      lens.setAttribute("r", "6.5");
+      svg.append(lens);
+      const detail = document2.createElementNS(SVG_NAMESPACE, "path");
+      detail.setAttribute("d", icon === "zoomIn" ? "M8 10.5h5m-2.5-2.5v5m4.8 2.3L21 21" : "M8 10.5h5m2.3 4.8L21 21");
+      svg.append(detail);
+      return svg;
+    }
+    const shape = document2.createElementNS(SVG_NAMESPACE, "path");
+    shape.setAttribute("d", icon === "fit" ? "M4 9V5a1 1 0 0 1 1-1h4m6 0h4a1 1 0 0 1 1 1v4m0 6v4a1 1 0 0 1-1 1h-4m-6 0H5a1 1 0 0 1-1-1v-4M9 9h6v6H9z" : "M5 5l14 14M19 5 5 19");
+    svg.append(shape);
+    return svg;
+  }
+  var ImageZoomDialog = class {
+    constructor(document2) {
+      this.document = document2;
+      this.#language = document2.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
+      this.#dialog = document2.createElement("dialog");
+      this.#dialog.className = "image-zoom-dialog";
+      this.#dialog.setAttribute("aria-label", translate(this.#language, "zoomViewerTitle"));
+      const panel = document2.createElement("div");
+      panel.className = "image-zoom-panel";
+      this.#viewport = document2.createElement("div");
+      this.#viewport.className = "image-zoom-viewport";
+      this.#image = document2.createElement("img");
+      this.#image.className = "image-zoom-image";
+      this.#image.draggable = false;
+      this.#image.addEventListener("pointerdown", this.#onPointerDown);
+      this.#image.addEventListener("pointermove", this.#onPointerMove);
+      this.#image.addEventListener("pointerup", this.#onPointerEnd);
+      this.#image.addEventListener("pointercancel", this.#onPointerEnd);
+      this.#image.addEventListener("lostpointercapture", this.#onPointerEnd);
+      this.#viewport.append(this.#image);
+      const toolbar = document2.createElement("div");
+      toolbar.className = "image-zoom-toolbar";
+      this.#closeButton = this.#createButton("close", "zoomClose", () => this.close());
+      toolbar.append(this.#closeButton);
+      this.#controls = document2.createElement("div");
+      this.#controls.className = "image-zoom-controls";
+      this.#zoomOutButton = this.#createButton("zoomOut", "zoomOut", () => this.#setZoom(this.#zoom / ZOOM_STEP));
+      this.#zoomLevel = document2.createElement("output");
+      this.#zoomLevel.className = "image-zoom-level";
+      this.#zoomLevel.setAttribute("role", "status");
+      this.#zoomLevel.setAttribute("aria-live", "polite");
+      this.#fitButton = this.#createButton("fit", "zoomFit", () => this.#fit());
+      this.#zoomInButton = this.#createButton("zoomIn", "zoomIn", () => this.#setZoom(this.#zoom * ZOOM_STEP));
+      this.#controls.append(this.#zoomOutButton, this.#zoomLevel, this.#zoomInButton, this.#fitButton);
+      panel.append(this.#viewport, toolbar, this.#controls);
+      this.#dialog.append(panel);
+      this.#dialog.addEventListener("cancel", this.#onCancel);
+      this.#dialog.addEventListener("click", this.#onDialogClick);
+      this.#dialog.addEventListener("close", this.#onClose);
+      this.document.defaultView?.addEventListener("resize", this.#onResize);
+      document2.body.append(this.#dialog);
+      this.setLanguage(this.#language);
+    }
+    document;
+    #dialog;
+    #image;
+    #viewport;
+    #controls;
+    #zoomOutButton;
+    #zoomInButton;
+    #fitButton;
+    #closeButton;
+    #zoomLevel;
+    #trigger;
+    #language;
+    #zoom = 1;
+    #fitWidth = 0;
+    #fitHeight = 0;
+    #pointerDrag;
+    #restoreFocus = true;
+    #disposed = false;
+    open(trigger) {
+      if (this.#disposed) return;
+      this.#trigger = trigger;
+      this.#restoreFocus = true;
+      this.#zoom = 1;
+      this.#image.src = trigger.currentSrc || trigger.src;
+      this.#image.alt = trigger.alt;
+      this.#dialog.showModal();
+      this.#closeButton.focus();
+      this.#fitWhenReady();
+    }
+    close(restoreFocus = true) {
+      if (!this.#dialog.open) return;
+      this.#restoreFocus = restoreFocus;
+      this.#dialog.close();
+    }
+    setLanguage(language) {
+      this.#language = language;
+      this.#image.lang = language;
+      this.#dialog.setAttribute("aria-label", translate(language, "zoomViewerTitle"));
+      this.#zoomOutButton.setAttribute("aria-label", translate(language, "zoomOut"));
+      this.#zoomOutButton.title = translate(language, "zoomOut");
+      this.#zoomInButton.setAttribute("aria-label", translate(language, "zoomIn"));
+      this.#zoomInButton.title = translate(language, "zoomIn");
+      this.#fitButton.setAttribute("aria-label", translate(language, "zoomFit"));
+      this.#fitButton.title = translate(language, "zoomFit");
+      this.#closeButton.setAttribute("aria-label", translate(language, "zoomClose"));
+      this.#closeButton.title = translate(language, "zoomClose");
+      this.#updateZoomControls();
+    }
+    dispose() {
+      this.#disposed = true;
+      this.document.defaultView?.removeEventListener("resize", this.#onResize);
+      this.close(false);
+      this.#dialog.remove();
+    }
+    #createButton(icon, label, onClick) {
+      const button = this.document.createElement("button");
+      button.type = "button";
+      button.className = "image-zoom-button";
+      button.classList.add(`image-zoom-${icon}`);
+      button.append(createZoomIcon(this.document, icon));
+      button.setAttribute("aria-label", translate(this.#language, label));
+      button.addEventListener("click", onClick);
+      return button;
+    }
+    #fitWhenReady() {
+      if (this.#image.complete && this.#image.naturalWidth > 0) {
+        this.#fit();
+        return;
+      }
+      this.#image.addEventListener("load", this.#onImageLoad, { once: true });
+    }
+    #fit() {
+      if (!this.#dialog.open) return;
+      const naturalWidth = this.#image.naturalWidth || this.#trigger?.width || 0;
+      const naturalHeight = this.#image.naturalHeight || this.#trigger?.height || 0;
+      const viewportStyle = this.document.defaultView?.getComputedStyle(this.#viewport);
+      const horizontalPadding = Number.parseFloat(viewportStyle?.paddingLeft ?? "0") + Number.parseFloat(viewportStyle?.paddingRight ?? "0");
+      const verticalPadding = Number.parseFloat(viewportStyle?.paddingTop ?? "0") + Number.parseFloat(viewportStyle?.paddingBottom ?? "0");
+      const availableWidth = Math.max(1, this.#viewport.clientWidth - horizontalPadding);
+      const availableHeight = Math.max(1, this.#viewport.clientHeight - verticalPadding);
+      if (naturalWidth <= 0 || naturalHeight <= 0) return;
+      const scale = Math.min(availableWidth / naturalWidth, availableHeight / naturalHeight);
+      this.#fitWidth = naturalWidth * scale;
+      this.#fitHeight = naturalHeight * scale;
+      this.#zoom = 1;
+      this.#applyImageSize();
+    }
+    #setZoom(zoom) {
+      this.#zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+      this.#applyImageSize();
+    }
+    #applyImageSize() {
+      this.#image.style.width = `${this.#fitWidth * this.#zoom}px`;
+      this.#image.style.height = `${this.#fitHeight * this.#zoom}px`;
+      this.#updatePanAvailability();
+      this.#updateZoomControls();
+    }
+    #updatePanAvailability() {
+      const canPan = this.#viewport.scrollWidth > this.#viewport.clientWidth + 1 || this.#viewport.scrollHeight > this.#viewport.clientHeight + 1;
+      this.#viewport.dataset.canPan = String(canPan);
+      if (!canPan) delete this.#viewport.dataset.panning;
+    }
+    #updateZoomControls() {
+      if (!this.#zoomLevel) return;
+      this.#zoomLevel.value = `${Math.round(this.#zoom * 100)}%`;
+      this.#zoomLevel.textContent = this.#zoomLevel.value;
+      this.#zoomOutButton.disabled = this.#zoom <= MIN_ZOOM;
+      this.#zoomInButton.disabled = this.#zoom >= MAX_ZOOM;
+    }
+    #onImageLoad = () => this.#fit();
+    #onPointerDown = (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      if (this.#viewport.dataset.canPan !== "true") return;
+      this.#pointerDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startScrollLeft: this.#viewport.scrollLeft,
+        startScrollTop: this.#viewport.scrollTop
+      };
+      this.#viewport.dataset.panning = "true";
+      this.#image.setPointerCapture(event.pointerId);
+    };
+    #onPointerMove = (event) => {
+      const drag = this.#pointerDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      this.#viewport.scrollLeft = drag.startScrollLeft - (event.clientX - drag.startX);
+      this.#viewport.scrollTop = drag.startScrollTop - (event.clientY - drag.startY);
+    };
+    #onPointerEnd = (event) => {
+      if (this.#pointerDrag?.pointerId !== event.pointerId) return;
+      this.#pointerDrag = void 0;
+      delete this.#viewport.dataset.panning;
+      if (this.#image.hasPointerCapture(event.pointerId)) this.#image.releasePointerCapture(event.pointerId);
+    };
+    #onResize = () => {
+      if (!this.#dialog.open || this.#fitWidth <= 0 || this.#fitHeight <= 0) return;
+      const zoom = this.#zoom;
+      this.#fit();
+      this.#setZoom(zoom);
+    };
+    #onCancel = (event) => {
+      event.preventDefault();
+      this.close();
+    };
+    #onDialogClick = (event) => {
+      if (event.target !== this.#dialog) return;
+      const rect = this.#dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) this.close();
+    };
+    #onClose = () => {
+      if (this.#pointerDrag) {
+        const pointerId = this.#pointerDrag.pointerId;
+        this.#pointerDrag = void 0;
+        delete this.#viewport.dataset.panning;
+        if (this.#image.hasPointerCapture(pointerId)) this.#image.releasePointerCapture(pointerId);
+      }
+      const trigger = this.#trigger;
+      this.#trigger = void 0;
+      if (this.#disposed || !this.#restoreFocus) return;
+      const target = trigger?.isConnected ? trigger : this.document.getElementById("document");
+      target?.focus();
+    };
+  };
+
   // src/webview/ReaderApp.ts
   var ReaderApp = class {
     constructor(document2, api) {
@@ -620,12 +880,14 @@
       this.#controls = new ReaderControls(document2, (message) => api.postMessage(message), () => {
         void this.#mermaid.render(this.article);
       });
+      this.#imageZoom = new ImageZoomDialog(document2);
     }
     document;
     api;
     #revision = -1;
     #controls;
     #mermaid = new MermaidRenderer();
+    #imageZoom;
     #activeSlug;
     #tocVisible = true;
     #collapsedSlugs = /* @__PURE__ */ new Set();
@@ -704,6 +966,7 @@
     }
     applyRender(result, restore) {
       if (result.revision <= this.#revision) return;
+      this.#imageZoom.close(false);
       restore ??= this.#revision < 0 ? this.api.getState() : this.captureViewport();
       this.#clearSearchMatches();
       this.#updateSearchControls();
@@ -747,6 +1010,7 @@
     }
     dispose() {
       this.#controls.dispose();
+      this.#imageZoom.dispose();
       this.window.removeEventListener("message", this.#onMessage);
       this.document.removeEventListener("click", this.#onClick);
       this.document.removeEventListener("dblclick", this.#onDoubleClick);
@@ -821,6 +1085,11 @@
     #onClick = (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      const zoomableImage = target.closest("img.mermaid-diagram, img.reader-image-zoom");
+      if (zoomableImage && this.article.contains(zoomableImage)) {
+        this.#imageZoom.open(zoomableImage);
+        return;
+      }
       const branch = target.closest("[data-toggle-branch]");
       if (branch) {
         const slug = branch.dataset.toggleBranch;
@@ -879,6 +1148,15 @@
       }
     };
     #onKeyDown = (event) => {
+      const target = event.target;
+      if (target instanceof Element && (event.key === "Enter" || event.key === " ")) {
+        const zoomableImage = target.closest("img.mermaid-diagram, img.reader-image-zoom");
+        if (zoomableImage && this.article.contains(zoomableImage)) {
+          event.preventDefault();
+          this.#imageZoom.open(zoomableImage);
+          return;
+        }
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
         event.preventDefault();
         this.#openSearch();
@@ -1220,7 +1498,18 @@
       for (const image of this.article.querySelectorAll("img.mermaid-diagram")) {
         image.lang = this.#language;
         image.alt = translate(this.#language, "mermaidAlt");
+        image.setAttribute("aria-label", translate(this.#language, "openMermaidDiagram"));
       }
+      for (const image of this.article.querySelectorAll("img:not(.mermaid-diagram)")) {
+        if (image.closest("a[href]")) continue;
+        image.classList.add("reader-image-zoom");
+        image.lang = this.#language;
+        image.tabIndex = 0;
+        image.setAttribute("role", "button");
+        const label = translate(this.#language, "openImageInZoomViewer");
+        image.setAttribute("aria-label", image.alt ? `${label}: ${image.alt}` : label);
+      }
+      this.#imageZoom.setLanguage(this.#language);
       for (const error of this.article.querySelectorAll(".mermaid-error")) {
         error.lang = this.#language;
         error.textContent = translate(this.#language, "mermaidRenderFailed");

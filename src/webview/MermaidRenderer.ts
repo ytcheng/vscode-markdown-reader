@@ -37,6 +37,9 @@ export class MermaidRenderer {
         image.className = 'mermaid-diagram';
         image.lang = document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en';
         image.alt = translate(document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en', 'mermaidAlt');
+        image.setAttribute('role', 'button');
+        image.tabIndex = 0;
+        image.setAttribute('aria-label', translate(document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en', 'openMermaidDiagram'));
         image.dataset.readerColor = color;
         const viewBox = svg.match(/<svg\b[^>]*\bviewBox="([^"]+)"/)?.[1].trim().split(/[\s,]+/).map(Number);
         if (viewBox?.length === 4 && viewBox.every(Number.isFinite) && viewBox[2] > 0 && viewBox[3] > 0) {

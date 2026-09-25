@@ -1,5 +1,6 @@
 import { ReaderControls } from './ReaderControls.js';
 import { MermaidRenderer } from './MermaidRenderer.js';
+import { ImageZoomDialog } from './ImageZoomDialog.js';
 import type { HeadingItem, RenderResult } from '../renderer/types.js';
 import type { ExtensionToWebviewMessage, ViewportState, WebviewToExtensionMessage } from './messages.js';
 import { translate, type ReaderUiLanguage } from './localization.js';
@@ -23,6 +24,7 @@ export class ReaderApp {
   #revision = -1;
   readonly #controls: ReaderControls;
   readonly #mermaid = new MermaidRenderer();
+  readonly #imageZoom: ImageZoomDialog;
   #activeSlug: string | undefined;
   #tocVisible = true;
   #collapsedSlugs = new Set<string>();
@@ -45,7 +47,10 @@ export class ReaderApp {
   constructor(
     private readonly document: Document,
     private readonly api: VsCodeApi
-  ) { this.#controls = new ReaderControls(document, (message) => api.postMessage(message), () => { void this.#mermaid.render(this.article); }); }
+  ) {
+    this.#controls = new ReaderControls(document, (message) => api.postMessage(message), () => { void this.#mermaid.render(this.article); });
+    this.#imageZoom = new ImageZoomDialog(document);
+  }
 
   start(): void {
     if (this.#started) return;
@@ -99,6 +104,7 @@ export class ReaderApp {
 
   applyRender(result: RenderResult, restore?: ViewportState): void {
     if (result.revision <= this.#revision) return;
+    this.#imageZoom.close(false);
     restore ??= this.#revision < 0 ? this.api.getState() : this.captureViewport();
     this.#clearSearchMatches();
     this.#updateSearchControls();
@@ -146,6 +152,7 @@ export class ReaderApp {
 
   dispose(): void {
     this.#controls.dispose();
+    this.#imageZoom.dispose();
     this.window.removeEventListener('message', this.#onMessage);
     this.document.removeEventListener('click', this.#onClick);
     this.document.removeEventListener('dblclick', this.#onDoubleClick);
@@ -231,6 +238,12 @@ export class ReaderApp {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    const zoomableImage = target.closest<HTMLImageElement>('img.mermaid-diagram, img.reader-image-zoom');
+    if (zoomableImage && this.article.contains(zoomableImage)) {
+      this.#imageZoom.open(zoomableImage);
+      return;
+    }
+
     const branch = target.closest<HTMLButtonElement>('[data-toggle-branch]');
     if (branch) {
       const slug = branch.dataset.toggleBranch!;
@@ -295,6 +308,16 @@ export class ReaderApp {
   };
 
   #onKeyDown = (event: KeyboardEvent): void => {
+    const target = event.target;
+    if (target instanceof Element && (event.key === 'Enter' || event.key === ' ')) {
+      const zoomableImage = target.closest<HTMLImageElement>('img.mermaid-diagram, img.reader-image-zoom');
+      if (zoomableImage && this.article.contains(zoomableImage)) {
+        event.preventDefault();
+        this.#imageZoom.open(zoomableImage);
+        return;
+      }
+    }
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
       event.preventDefault();
       this.#openSearch();
@@ -680,7 +703,18 @@ export class ReaderApp {
     for (const image of this.article.querySelectorAll<HTMLImageElement>('img.mermaid-diagram')) {
       image.lang = this.#language;
       image.alt = translate(this.#language, 'mermaidAlt');
+      image.setAttribute('aria-label', translate(this.#language, 'openMermaidDiagram'));
     }
+    for (const image of this.article.querySelectorAll<HTMLImageElement>('img:not(.mermaid-diagram)')) {
+      if (image.closest('a[href]')) continue;
+      image.classList.add('reader-image-zoom');
+      image.lang = this.#language;
+      image.tabIndex = 0;
+      image.setAttribute('role', 'button');
+      const label = translate(this.#language, 'openImageInZoomViewer');
+      image.setAttribute('aria-label', image.alt ? `${label}: ${image.alt}` : label);
+    }
+    this.#imageZoom.setLanguage(this.#language);
     for (const error of this.article.querySelectorAll<HTMLElement>('.mermaid-error')) {
       error.lang = this.#language;
       error.textContent = translate(this.#language, 'mermaidRenderFailed');

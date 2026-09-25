@@ -1060,6 +1060,22 @@ body.vscode-light .markdown-body code {
   max-width: 100%;
   height: auto;
   background: var(--reader-background, white);
+  cursor: zoom-in;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.markdown-body .mermaid-diagram:focus-visible {
+  outline: 2px solid var(--primary-color, var(--vscode-focusBorder, #007acc));
+  outline-offset: 3px;
+}
+.markdown-body .reader-image-zoom {
+  cursor: zoom-in;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.markdown-body .reader-image-zoom:focus-visible {
+  outline: 2px solid var(--primary-color, var(--vscode-focusBorder, #007acc));
+  outline-offset: 3px;
 }
 .markdown-body .mermaid-error {
   color: var(--danger-color);
@@ -1071,6 +1087,136 @@ body.vscode-light .markdown-body code {
   top: 0;
   width: 900px;
   visibility: hidden;
+}
+dialog.image-zoom-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  color: var(--reader-foreground, var(--vscode-editor-foreground, #242424));
+  background: var(--reader-background, var(--vscode-editor-background, #fff));
+  box-shadow: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+dialog.image-zoom-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+.image-zoom-panel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.image-zoom-toolbar {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 14px;
+}
+.image-zoom-controls {
+  position: absolute;
+  z-index: 2;
+  bottom: 14px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.image-zoom-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--reader-foreground, var(--vscode-editor-foreground, #242424));
+  background: transparent;
+  cursor: pointer;
+  transition: color 120ms ease, transform 120ms ease;
+}
+.image-zoom-button svg {
+  display: block;
+  filter: drop-shadow(0 1px 2px var(--reader-background, #fff)) drop-shadow(0 1px 1px var(--reader-foreground, #000));
+}
+.image-zoom-button:hover:not(:disabled) {
+  color: var(--primary-color, var(--vscode-textLink-foreground, #007acc));
+  transform: scale(1.1);
+}
+.image-zoom-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.image-zoom-button:focus-visible {
+  color: var(--primary-color, var(--vscode-focusBorder, #007acc));
+  transform: scale(1.1);
+}
+.image-zoom-button.image-zoom-close svg {
+  width: 22px;
+  height: 22px;
+}
+.image-zoom-level {
+  min-width: 48px;
+  text-align: center;
+  color: var(--reader-foreground, var(--vscode-editor-foreground, #242424));
+  font: 12px/1.4 var(--vscode-editor-font-family, monospace);
+  text-shadow: 0 1px 2px var(--reader-background, #fff);
+}
+.image-zoom-viewport {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 60px 64px 72px 32px;
+}
+.image-zoom-image {
+  flex: none;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  height: auto;
+  margin: auto;
+  object-fit: contain;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+.image-zoom-viewport[data-can-pan='true'] .image-zoom-image {
+  cursor: grab;
+}
+.image-zoom-viewport[data-panning='true'] .image-zoom-image {
+  cursor: grabbing;
+}
+@media (max-width: 520px) {
+  .image-zoom-toolbar {
+    top: 8px;
+    right: 8px;
+  }
+  .image-zoom-controls {
+    bottom: 8px;
+    gap: 6px;
+  }
+  .image-zoom-button {
+    width: 38px;
+    height: 38px;
+  }
+  .image-zoom-viewport {
+    padding: 48px 48px 64px 20px;
+  }
 }
 .markdown-body .katex-display {
   overflow-x: auto;
