@@ -172,6 +172,13 @@ body:has(.toc[hidden]) .reader {
   line-height: 1.6;
   text-decoration: none;
 }
+body:not([data-toc-overflow='wrap']) .toc a,
+body:not([data-toc-overflow='wrap']) .toc-drawer a {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .toc a[data-heading-level='1'],
 .toc a[data-heading-level='2'],
 .toc-drawer a[data-heading-level='1'],
@@ -1699,7 +1706,7 @@ dialog#reader-settings .font-size-control button {
   width: 30px;
 }
 dialog#reader-settings .font-size-follow-note {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   margin-top: -8px;
   color: var(--text-muted);
   font-size: 12px;
@@ -1755,6 +1762,9 @@ dialog#reader-settings :is(button, input, select):focus-visible {
   }
   dialog#reader-settings .settings-fields > label {
     margin-top: 8px;
+  }
+  dialog#reader-settings .font-size-follow-note {
+    grid-column: 1 / -1;
   }
 }
 button#reader-print {

@@ -91,6 +91,7 @@ Configure Markdown Reader in VS Code Settings, or add the following to `settings
   "markdownReader.toc.enabled": true,
   "markdownReader.toc.maxDepth": 3,
   "markdownReader.toc.width": 260,
+  "markdownReader.toc.overflow": "ellipsis",
   "markdownReader.content.maxWidth": 900
 }
 ```
@@ -101,6 +102,7 @@ Configure Markdown Reader in VS Code Settings, or add the following to `settings
 | `markdownReader.toc.enabled` | `true` | Show the table of contents when opening a document. |
 | `markdownReader.toc.maxDepth` | `3` | Include headings through this level (`1`–`6`). |
 | `markdownReader.toc.width` | `260` | Default TOC width in pixels (`180`–`480`). You can also resize it in the reader. |
+| `markdownReader.toc.overflow` | `ellipsis` | `ellipsis` keeps headings on one line and truncates them to fit the TOC width; `wrap` keeps the original wrapping behavior. |
 | `markdownReader.content.maxWidth` | `900` | Maximum reading-column width in pixels (`560`–`1600`). |
 | `markdownReader.theme` | `reader` | `reader`, `github` |
 | `markdownReader.colorMode` | `light` | `auto`, `light`, `dark` |

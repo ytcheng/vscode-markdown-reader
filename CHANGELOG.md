@@ -2,6 +2,12 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.11 — 2026-09-26
+
+- Add a table-of-contents heading display setting: default to single-line ellipsis that adapts to the sidebar width, with an option to retain wrapping.
+- Keep the editor-following font-size details directly beneath the font-size control in Reading Settings.
+- Adjust the search box width and position for better alignment.
+
 ## 0.3.10 — 2026-09-25
 
 - Increase the reader font size by an additional 1px when following VS Code's editor font size.

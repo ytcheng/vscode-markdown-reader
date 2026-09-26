@@ -8,6 +8,7 @@
     fontFamily: "",
     fontSize: 16,
     fontSizeMode: "editor",
+    tocOverflow: "ellipsis",
     contentMaxWidth: 900,
     largeFileMode: "auto",
     largeFileThresholdKb: 1024
@@ -29,6 +30,8 @@
         return integerBetween(value, 12, 32);
       case "fontSizeMode":
         return value === "editor" || value === "custom";
+      case "tocOverflow":
+        return value === "ellipsis" || value === "wrap";
       case "contentMaxWidth":
         return integerBetween(value, 560, 1600);
       case "largeFileThresholdKb":
@@ -93,6 +96,9 @@
       followingEditorSize: "Following VS Code editor font size:",
       readerDisplaySize: "Reader display:",
       contentWidth: "Content width",
+      tocOverflow: "TOC long headings",
+      tocOverflowEllipsis: "Single line with ellipsis",
+      tocOverflowWrap: "Wrap onto multiple lines",
       largeFileMode: "Large file mode",
       automatic: "Automatic",
       enabled: "On",
@@ -169,6 +175,9 @@
       followingEditorSize: "\u8DDF\u968F VS Code \u7F16\u8F91\u5668\u5B57\u53F7\uFF1A",
       readerDisplaySize: "\u9605\u8BFB\u5668\u663E\u793A\uFF1A",
       contentWidth: "\u6B63\u6587\u5BBD\u5EA6",
+      tocOverflow: "\u76EE\u5F55\u957F\u6807\u9898\u663E\u793A",
+      tocOverflowEllipsis: "\u5355\u884C\u7701\u7565",
+      tocOverflowWrap: "\u81EA\u52A8\u6362\u884C",
       largeFileMode: "\u5927\u6587\u4EF6\u6A21\u5F0F",
       automatic: "\u81EA\u52A8",
       enabled: "\u5F00\u542F",
@@ -282,6 +291,7 @@
       this.#applyLanguage();
       const body = this.document.body;
       body.dataset.readerTheme = this.#settings.theme;
+      body.dataset.tocOverflow = this.#settings.tocOverflow;
       body.style.setProperty("--reader-font-size", `${effectiveFontSize(this.#settings)}px`);
       body.style.setProperty("--reader-font-family", this.#settings.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
       body.style.setProperty("--reader-content-max-width", `${this.#settings.contentMaxWidth}px`);

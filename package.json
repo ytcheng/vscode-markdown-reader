@@ -2,7 +2,7 @@
   "name": "vscode-markdown-reader",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "publisher": "chengjian",
   "private": true,
   "repository": {
@@ -203,6 +203,14 @@
           "minimum": 180,
           "maximum": 480,
           "description": "%setting.toc.width%"
+        },
+        "markdownReader.toc.overflow": {
+          "type": "string",
+          "enum": ["ellipsis", "wrap"],
+          "enumItemLabels": ["%setting.toc.overflow.ellipsis%", "%setting.toc.overflow.wrap%"],
+          "enumDescriptions": ["%setting.toc.overflow.ellipsis.description%", "%setting.toc.overflow.wrap.description%"],
+          "default": "ellipsis",
+          "description": "%setting.toc.overflow.description%"
         },
         "markdownReader.content.maxWidth": {
           "type": "integer",

@@ -168,6 +168,14 @@ body:has(.toc[hidden]) .reader {
   text-decoration: none;
 }
 
+body:not([data-toc-overflow='wrap']) .toc a,
+body:not([data-toc-overflow='wrap']) .toc-drawer a {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .toc a[data-heading-level='1'],
 .toc a[data-heading-level='2'],
 .toc-drawer a[data-heading-level='1'],

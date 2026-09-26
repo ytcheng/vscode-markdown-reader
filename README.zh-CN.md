@@ -91,6 +91,7 @@
   "markdownReader.toc.enabled": true,
   "markdownReader.toc.maxDepth": 3,
   "markdownReader.toc.width": 260,
+  "markdownReader.toc.overflow": "ellipsis",
   "markdownReader.content.maxWidth": 900
 }
 ```
@@ -101,6 +102,7 @@
 | `markdownReader.toc.enabled` | `true` | 打开文档时是否显示目录。 |
 | `markdownReader.toc.maxDepth` | `3` | 目录展示到第几级标题（`1`–`6`）。 |
 | `markdownReader.toc.width` | `260` | 目录默认宽度，单位为像素（`180`–`480`）；也可以在阅读器中拖动调整。 |
+| `markdownReader.toc.overflow` | `ellipsis` | `ellipsis` 表示标题保持单行并根据目录宽度截断；`wrap` 保留原来的自动换行方式。 |
 | `markdownReader.content.maxWidth` | `900` | 正文最大宽度，单位为像素（`560`–`1600`）。 |
 | `markdownReader.theme` | `reader` | `reader` / `github` 排版。 |
 | `markdownReader.colorMode` | `light` | `auto` / `light` / `dark` 配色。 |

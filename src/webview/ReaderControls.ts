@@ -42,6 +42,7 @@ export class ReaderControls {
     this.#applyLanguage();
     const body = this.document.body;
     body.dataset.readerTheme = this.#settings.theme;
+    body.dataset.tocOverflow = this.#settings.tocOverflow;
     body.style.setProperty('--reader-font-size', `${effectiveFontSize(this.#settings)}px`);
     body.style.setProperty('--reader-font-family', this.#settings.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
     body.style.setProperty('--reader-content-max-width', `${this.#settings.contentMaxWidth}px`);

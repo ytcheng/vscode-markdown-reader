@@ -7,6 +7,7 @@ export interface ReaderSettings {
   fontSizeMode: 'editor' | 'custom';
   /** Resolved from editor.fontSize at runtime; never stored in markdownReader settings. */
   editorFontSize?: number;
+  tocOverflow: 'ellipsis' | 'wrap';
   contentMaxWidth: number;
   largeFileMode: 'auto' | 'on' | 'off';
   largeFileThresholdKb: number;
@@ -15,12 +16,12 @@ export type ReaderLanguage = 'auto' | 'en' | 'zh-CN';
 export type ReaderSettingKey = Exclude<keyof ReaderSettings, 'editorFontSize'>;
 export const defaultSettings: Readonly<ReaderSettings> = Object.freeze({
   language: 'auto', theme: 'reader', colorMode: 'light', fontFamily: '', fontSize: 16, fontSizeMode: 'editor',
-  contentMaxWidth: 900, largeFileMode: 'auto', largeFileThresholdKb: 1024
+  tocOverflow: 'ellipsis', contentMaxWidth: 900, largeFileMode: 'auto', largeFileThresholdKb: 1024
 });
 export const settingKeys = Object.keys(defaultSettings) as ReaderSettingKey[];
 export const configurationKeys: Record<ReaderSettingKey, string> = {
   language: 'language', theme: 'theme', colorMode: 'colorMode', fontFamily: 'fontFamily', fontSize: 'fontSize', fontSizeMode: 'fontSizeMode',
-  contentMaxWidth: 'content.maxWidth', largeFileMode: 'largeFile.mode', largeFileThresholdKb: 'largeFile.thresholdKb'
+  tocOverflow: 'toc.overflow', contentMaxWidth: 'content.maxWidth', largeFileMode: 'largeFile.mode', largeFileThresholdKb: 'largeFile.thresholdKb'
 };
 export function isSettingValue(key: string, value: unknown): boolean {
   switch (key) {
@@ -31,6 +32,7 @@ export function isSettingValue(key: string, value: unknown): boolean {
     case 'fontFamily': return typeof value === 'string' && value.length <= 200 && !/[;{}<>\\\n\r\x00-\x1f]/u.test(value) && !/url\s*\(/i.test(value);
     case 'fontSize': return integerBetween(value, 12, 32);
     case 'fontSizeMode': return value === 'editor' || value === 'custom';
+    case 'tocOverflow': return value === 'ellipsis' || value === 'wrap';
     case 'contentMaxWidth': return integerBetween(value, 560, 1600);
     case 'largeFileThresholdKb': return integerBetween(value, 1, 102400);
     default: return false;
