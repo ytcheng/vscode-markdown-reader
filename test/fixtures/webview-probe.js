@@ -164,10 +164,10 @@ window.addEventListener('message', (event) => {
             cspErrors: cspErrors.slice()
           });
         }
-        if (performance.now() - startedAt < 20_000) return;
+        if (performance.now() - startedAt < 35_000) return;
       }
       clearInterval(timer);
-      collectReport(message.result, startedAt);
+      collectReport(message.result, startedAt, true);
       } catch (error) {
         realTestApi.postMessage({ type: 'testProbeError', message: error instanceof Error ? error.message : String(error) });
       }
