@@ -57,8 +57,8 @@ flowchart LR
     C --> D[Local diagram client]
     D -->|按需创建并复用| E[隔离 renderer iframe]
     E --> F{语言}
-    F -->|plantuml / puml| G[@plantuml/core]
-    F -->|dot / graphviz| H[@viz-js/viz]
+    F -->|plantuml / puml| G["@plantuml/core"]
+    F -->|dot / graphviz| H["@viz-js/viz"]
     G --> I[校验 SVG]
     H --> I
     I -->|请求仍有效| J[编码 SVG image]
