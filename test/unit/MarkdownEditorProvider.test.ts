@@ -365,7 +365,7 @@ it('exports an immutable source snapshot and drops stale diagram images', async 
   await provider.resolveCustomTextEditor(document as never, panel as never);
   receive({ type: 'ready' });
   await vi.waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'render' })));
-  const diagrams = ['data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C%2Fsvg%3E'];
+  const diagrams = [`data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" />')}`];
   receive({ type: 'exportHtml', revision: 1, diagrams });
   await vi.waitFor(() => expect(exported).toHaveBeenCalledTimes(1));
   expect(exported.mock.calls[0][2]).toEqual(diagrams);
