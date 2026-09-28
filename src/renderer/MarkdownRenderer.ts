@@ -15,6 +15,13 @@ interface RenderEnvironment extends Env {
 }
 
 const TABLE_ALIGNMENT = /text-align:\s*(left|center|right)/i;
+const DIAGRAM_FENCE_LANGUAGES = new Set(['mermaid', 'plantuml', 'puml', 'dot', 'graphviz']);
+
+function localDiagramKind(language: string): 'plantuml' | 'graphviz' | undefined {
+  if (language === 'plantuml' || language === 'puml') return 'plantuml';
+  if (language === 'dot' || language === 'graphviz') return 'graphviz';
+  return undefined;
+}
 
 export class MarkdownRenderer {
   readonly #md: MarkdownItInstance;
@@ -55,6 +62,10 @@ export class MarkdownRenderer {
     this.#md.renderer.rules.fence = (tokens, index, _options, env) => {
       const token = tokens[index];
       const language = token.info.trim().split(/\s+/, 1)[0].toLowerCase();
+      const diagramKind = localDiagramKind(language);
+      if (diagramKind && !(env as RenderEnvironment).largeFile) {
+        return `<figure class="local-diagram" data-local-diagram="${diagramKind}" data-source-line="${token.map?.[0] ?? 0}"><pre><code>${this.#md.utils.escapeHtml(token.content)}</code></pre></figure>\n`;
+      }
       if (language === 'mermaid' && !(env as RenderEnvironment).largeFile) {
         return `<figure data-mermaid data-source-line="${token.map?.[0] ?? 0}"><pre><code>${this.#md.utils.escapeHtml(token.content)}</code></pre></figure>\n`;
       }
@@ -86,7 +97,7 @@ export class MarkdownRenderer {
         await Promise.all(items.map(async (token) => {
           if (token.type === 'fence') {
             const language = token.info.trim().split(/\s+/, 1)[0].toLowerCase();
-            if (language === 'mermaid') return;
+            if (DIAGRAM_FENCE_LANGUAGES.has(language)) return;
             const html = await highlightCode(token.content, language);
             if (html !== undefined) environment.highlighted.set(token, html);
           }

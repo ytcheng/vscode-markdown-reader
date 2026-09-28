@@ -121,6 +121,28 @@ $\href{javascript:alert(1)}{bad}$`, 1);
     expect(result.html).not.toContain('<script>');
   });
 
+  it.each(['plantuml', 'puml'])('marks %s as a PlantUML diagram and preserves escaped source', async (language) => {
+    const result = await new MarkdownRenderer().render(
+      `Before\n\n\`\`\`${language}\n@startuml\nAlice -> <Bob>\n@enduml\n\`\`\``,
+      1
+    );
+
+    expect(result.html).toContain('<figure class="local-diagram" data-local-diagram="plantuml" data-source-line="2">');
+    expect(result.html).toContain('<code>@startuml\nAlice -&gt; &lt;Bob&gt;\n@enduml\n</code>');
+    expect(result.html).not.toContain('class="copy-code-btn"');
+  });
+
+  it.each(['dot', 'graphviz'])('marks %s as a Graphviz diagram and preserves escaped source', async (language) => {
+    const result = await new MarkdownRenderer().render(
+      `Before\n\n\`\`\`${language}\n digraph G { A -> <B> }\n\`\`\``,
+      1
+    );
+
+    expect(result.html).toContain('<figure class="local-diagram" data-local-diagram="graphviz" data-source-line="2">');
+    expect(result.html).toContain('<code> digraph G { A -&gt; &lt;B&gt; }\n</code>');
+    expect(result.html).not.toContain('class="copy-code-btn"');
+  });
+
   it('keeps block math source lines and isolates macros between renders', async () => {
     const renderer = new MarkdownRenderer();
     const first = await renderer.render('Intro\n\n$$\n\\gdef\\customer{123456}\\customer\n$$\n\n$\\customer$', 1);

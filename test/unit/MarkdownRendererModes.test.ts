@@ -19,6 +19,26 @@ $$
 
 ${'```mermaid'}
 graph TD; A[<script>] --> B
+${'```'}
+
+${'```plantuml'}
+@startuml
+Alice -> <Bob>
+@enduml
+${'```'}
+
+${'```puml'}
+@startuml
+Alice --> <Carol>
+@enduml
+${'```'}
+
+${'```dot'}
+digraph G { A -> <B> }
+${'```'}
+
+${'```graphviz'}
+digraph G { C -> <D> }
 ${'```'}`;
 
 describe('MarkdownRenderer modes', () => {
@@ -36,8 +56,12 @@ describe('MarkdownRenderer modes', () => {
     expect(result.html).toContain('\\frac{a}{b} &lt; c');
     expect(result.html).toContain('const value = &quot;&lt;script&gt;&quot;;');
     expect(result.html).toContain('graph TD; A[&lt;script&gt;] --&gt; B');
-    expect(result.html.match(/data-copy-code/g)).toHaveLength(2);
-    expect(result.html).not.toMatch(/data-mermaid|class="katex|<script>/);
+    expect(result.html).toContain('Alice -&gt; &lt;Bob&gt;');
+    expect(result.html).toContain('Alice --&gt; &lt;Carol&gt;');
+    expect(result.html).toContain('digraph G { A -&gt; &lt;B&gt; }');
+    expect(result.html).toContain('digraph G { C -&gt; &lt;D&gt; }');
+    expect(result.html.match(/data-copy-code/g)).toHaveLength(6);
+    expect(result.html).not.toMatch(/data-mermaid|data-local-diagram|class="katex|<script>/);
     expect(result.styles).toBe('');
   });
 
@@ -51,6 +75,7 @@ describe('MarkdownRenderer modes', () => {
     expect(defaultResult.largeFile).toBe(false);
     expect(restored.html).toContain('class="katex"');
     expect(restored.html).toContain('data-mermaid');
+    expect(restored.html.match(/data-local-diagram=/g)).toHaveLength(4);
     expect(restored.styles).toContain('--shiki-dark:');
     expect(restored.html).toBe(defaultResult.html);
     expect(restored.headings).toEqual(defaultResult.headings);

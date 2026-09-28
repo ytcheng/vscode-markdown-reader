@@ -334,7 +334,7 @@ Expected: DOT adapter、父子 WASM CSP 和真实 POC 通过后提交。
 - Produces: 非大文件模式输出 `<figure class="local-diagram" data-local-diagram="plantuml|graphviz" data-source-line="N"><pre><code>escaped source</code></pre></figure>`。
 - Produces: 大文件模式继续输出原普通代码块，不生成 `data-local-diagram`。
 
-- [ ] **Step 1: 为四个语言别名写失败单元测试**
+- [x] **Step 1: 为四个语言别名写失败单元测试**
 
 给 `test/unit/MarkdownRenderer.test.ts` 增加四个输入，断言 `plantuml`、`puml` 的 `data-local-diagram` 都是 `plantuml`，`dot`、`graphviz` 的值都为 `graphviz`，并保留 `data-source-line` 和转义源码。
 
@@ -351,12 +351,12 @@ it.each(['dot', 'graphviz'])('marks %s as a Graphviz diagram', async (language) 
 });
 ```
 
-- [ ] **Step 2: 运行 parser 测试确认新 fence 还未被标记**
+- [x] **Step 2: 运行 parser 测试确认新 fence 还未被标记**
 
 Run: `npm run test:unit -- test/unit/MarkdownRenderer.test.ts`
 Expected: 新别名断言 FAIL；现有 Mermaid、普通代码断言保持 PASS。
 
-- [ ] **Step 3: 加入 fence 映射**
+- [x] **Step 3: 加入 fence 映射**
 
 在 `MarkdownRenderer` fence rule 中对语言先 `trim().split(/\s+/, 1)[0].toLowerCase()`，再按别名生成统一 `data-local-diagram` 值。源码只通过 `markdown-it` 的 `escapeHtml` 写入 `<code>`。
 
@@ -369,7 +369,7 @@ if (kind && !(env as RenderEnvironment).largeFile) {
 }
 ```
 
-- [ ] **Step 4: 跳过 diagram fence 的 Shiki 计算**
+- [x] **Step 4: 跳过 diagram fence 的 Shiki 计算**
 
 在 `highlightTokens` 遇到 `mermaid`、`plantuml`、`puml`、`dot`、`graphviz` 时跳过 `highlightCode`；普通 TypeScript fence 继续保留 Shiki 和 copy 控件。
 
@@ -379,16 +379,16 @@ if (rendererLanguages.has(language)) return;
 const html = await highlightCode(token.content, language);
 ```
 
-- [ ] **Step 5: 增加大文件模式测试**
+- [x] **Step 5: 增加大文件模式测试**
 
 在 `MarkdownRendererModes.test.ts` 同时放入四种新标签，`largeFile: true` 时断言 HTML 无 `data-local-diagram` 且代码源码已转义；`largeFile: false` 时断言四种图块重新出现。
 
-- [ ] **Step 6: 运行 parser 与大文件单测**
+- [x] **Step 6: 运行 parser 与大文件单测**
 
 Run: `npm run test:unit -- test/unit/MarkdownRenderer.test.ts test/unit/MarkdownRendererModes.test.ts`
 Expected: 新 fence、源码转义、大文件回退和普通代码回归测试全部 PASS。
 
-- [ ] **Step 7: 提交 Markdown fence 接入**
+- [x] **Step 7: 提交 Markdown fence 接入**
 
 Run: `git add src/renderer/MarkdownRenderer.ts test/unit/MarkdownRenderer.test.ts test/unit/MarkdownRendererModes.test.ts && git commit -m "feat: recognize local diagram fences"`
 Expected: fence parser 与 source fallback 测试通过后提交。
