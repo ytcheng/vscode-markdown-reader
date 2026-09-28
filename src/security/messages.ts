@@ -43,6 +43,13 @@ export function parseWebviewMessage(value: unknown): WebviewToExtensionMessage |
         (value.line === undefined || (typeof value.line === 'number' && Number.isSafeInteger(value.line) && value.line >= 0))
         ? { type: 'openSource', line: value.line as number | undefined }
         : undefined;
+    case 'toggleTask':
+      return hasOnlyKeys(value, ['type', 'line', 'previousChecked', 'checked']) &&
+        typeof value.line === 'number' && Number.isSafeInteger(value.line) && value.line >= 0 &&
+        typeof value.previousChecked === 'boolean' && typeof value.checked === 'boolean' &&
+        value.previousChecked !== value.checked
+        ? { type: 'toggleTask', line: value.line, previousChecked: value.previousChecked, checked: value.checked }
+        : undefined;
     case 'viewportChanged': {
       const state = parseViewportState(value.state);
       return state ? { type: 'viewportChanged', state } : undefined;

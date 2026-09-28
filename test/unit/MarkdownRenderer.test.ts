@@ -15,18 +15,28 @@ describe('MarkdownRenderer', async () => {
     expect(result.html).toContain('data-source-line="0"');
   });
 
-  it('supports tables and disabled task-list controls without source HTML', async () => {
+  it('supports tables and interactive task-list controls without source HTML', async () => {
     const result = await new MarkdownRenderer().render(
-      '| A | B |\n|---|---:|\n| x | y |\n\n- [x] done\n\n<script>alert(1)</script>',
-      1
+      '| A | B |\n|---|---:|\n| x | y |\n\n- [x] done\n- [ ] pending\n\n<script>alert(1)</script>',
+      1,
+      { interactiveTasks: true }
     );
 
     expect(result.html).toContain('<table data-source-line="0">');
     expect(result.html).toContain('class="align-right"');
     expect(result.html).toContain('class="task-list-item-checkbox"');
-    expect(result.html).toContain('disabled');
+    expect(result.html).toMatch(/<li class="task-list-item(?: enabled)?" data-source-line="4">/);
+    expect(result.html).toContain('checked="" type="checkbox"');
+    expect(result.html).toContain('<input class="task-list-item-checkbox" type="checkbox">');
+    expect(result.html).not.toContain('disabled');
     expect(result.html).not.toContain('<script>');
     expect(result.html).not.toContain('style=');
+  });
+
+  it('keeps task checkboxes disabled unless the caller requests interaction', async () => {
+    const result = await new MarkdownRenderer().render('- [ ] pending\n- [x] complete', 1);
+
+    expect(result.html.match(/disabled="" type="checkbox"/g)).toHaveLength(2);
   });
 
   it('handles empty, skipped, inline-formatted, and emoji headings predictably', async () => {

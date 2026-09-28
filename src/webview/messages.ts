@@ -26,6 +26,7 @@ export type WebviewToExtensionMessage =
   | { type: 'openSettings' }
   | { type: 'exportHtml' | 'print'; diagrams: string[]; revision: number }
   | { type: 'ready' }
+  | { type: 'toggleTask'; line: number; previousChecked: boolean; checked: boolean }
   | { type: 'openSource'; line?: number }
   | { type: 'openLink'; href: string }
   | { type: 'toggleToc' }

@@ -16,6 +16,7 @@ const vscode = vi.hoisted(() => {
       state.changeTextDocument = handler;
       return { dispose: vi.fn() };
     }),
+    applyEdit: vi.fn(async (_edit: unknown) => true),
     createFileSystemWatcher: vi.fn(() => {
       const watcher = {
         onDidChange: vi.fn((handler: (uri: unknown) => void) => {
@@ -35,6 +36,18 @@ const vscode = vi.hoisted(() => {
   Disposable: { from: vi.fn((...disposables: Array<{ dispose: () => void }>) => ({ dispose: () => disposables.forEach((disposable) => disposable.dispose()) })) },
   window: { activeTextEditor: undefined, showTextDocument: vi.fn(), showErrorMessage: vi.fn() },
   Position: class { constructor(public line: number, public character: number) {} },
+  Range: class {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+    constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
+      this.start = { line: startLine, character: startCharacter };
+      this.end = { line: endLine, character: endCharacter };
+    }
+  },
+  WorkspaceEdit: class {
+    edits: Array<{ uri: unknown; range: unknown; newText: string }> = [];
+    replace(uri: unknown, range: unknown, newText: string) { this.edits.push({ uri, range, newText }); }
+  },
   Selection: class { constructor(public start: unknown, public end: unknown) {} },
   TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
   commands: { executeCommand: vi.fn() },
@@ -48,7 +61,10 @@ vi.mock('vscode', () => vscode);
 import { MarkdownEditorProvider } from '../../src/editor/MarkdownEditorProvider.js';
 
 describe('MarkdownEditorProvider', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vscode.workspace.applyEdit.mockImplementation(async (_edit: unknown) => true);
+  });
 
   it('forwards a Webview TOC toggle request as an updated visibility message', async () => {
     let receive: ((message: unknown) => void) | undefined;
@@ -104,6 +120,87 @@ describe('MarkdownEditorProvider', () => {
       expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'setLayout', tocWidth: 260 }));
       expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'render' }));
     });
+  });
+
+  it('updates a task marker only when the source line still has its rendered state', async () => {
+    let receive: ((message: unknown) => void) | undefined;
+    let source = '# Tasks\n\n- [ ] write docs\n- [x] keep checked';
+    const uri = { toString: () => 'file:///tasks.md' };
+    const document = {
+      uri,
+      getText: () => source,
+      get lineCount() { return source.split('\n').length; },
+      lineAt: (line: number) => ({ text: source.split('\n')[line] ?? '' })
+    };
+    vscode.workspace.applyEdit.mockImplementation(async (rawEdit: unknown) => {
+      const edits = (rawEdit as { edits: Array<{ range: { start: { line: number; character: number }; end: { character: number } }; newText: string }> }).edits;
+      const lines = source.split('\n');
+      for (const edit of edits) {
+        const line = lines[edit.range.start.line]!;
+        lines[edit.range.start.line] = `${line.slice(0, edit.range.start.character)}${edit.newText}${line.slice(edit.range.end.character)}`;
+      }
+      source = lines.join('\n');
+      return true;
+    });
+    const panel = {
+      active: true,
+      webview: {
+        cspSource: 'vscode-webview:', options: {}, html: '',
+        asWebviewUri: vi.fn(() => ({ toString: () => 'webview-resource' })),
+        postMessage: vi.fn(async () => true),
+        onDidReceiveMessage: vi.fn((handler: (message: unknown) => void) => {
+          receive = handler;
+          return { dispose: vi.fn() };
+        })
+      },
+      onDidDispose: vi.fn(), onDidChangeViewState: vi.fn()
+    };
+    const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+    await provider.resolveCustomTextEditor(document as never, panel as never);
+
+    receive!({ type: 'toggleTask', line: 2, previousChecked: false, checked: true });
+    await vi.waitFor(() => expect(source).toBe('# Tasks\n\n- [x] write docs\n- [x] keep checked'));
+
+    receive!({ type: 'toggleTask', line: 3, previousChecked: false, checked: true });
+    receive!({ type: 'toggleTask', line: 3, previousChecked: true, checked: false });
+    await vi.waitFor(() => expect(source).toBe('# Tasks\n\n- [x] write docs\n- [ ] keep checked'));
+    expect(vscode.workspace.applyEdit).toHaveBeenCalledTimes(2);
+  });
+
+  it('rerenders a task checkbox when VS Code rejects the source edit', async () => {
+    let receive: ((message: unknown) => void) | undefined;
+    const uri = { toString: () => 'file:///readonly.md' };
+    const document = {
+      uri,
+      getText: () => '- [ ] task',
+      lineCount: 1,
+      lineAt: (line: number) => ({ text: line === 0 ? '- [ ] task' : '' })
+    };
+    const postMessage = vi.fn(async (_message: unknown) => true);
+    const panel = {
+      active: true,
+      webview: {
+        cspSource: 'vscode-webview:', options: {}, html: '',
+        asWebviewUri: vi.fn(() => ({ toString: () => 'webview-resource' })),
+        postMessage,
+        onDidReceiveMessage: vi.fn((handler: (message: unknown) => void) => {
+          receive = handler;
+          return { dispose: vi.fn() };
+        })
+      },
+      onDidDispose: vi.fn(), onDidChangeViewState: vi.fn()
+    };
+    vscode.workspace.applyEdit.mockResolvedValue(false);
+    const provider = new MarkdownEditorProvider({ extensionUri: {}, subscriptions: [] } as never);
+    await provider.resolveCustomTextEditor(document as never, panel as never);
+
+    receive!({ type: 'toggleTask', line: 0, previousChecked: false, checked: true });
+
+    await vi.waitFor(() => expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'render' })));
+    const render = postMessage.mock.calls.find(([message]) => (message as { type?: string }).type === 'render')?.[0] as {
+      result: { html: string };
+    } | undefined;
+    expect(render?.result.html).not.toContain('checked=""');
   });
 
   it('refreshes a preview from a replacement document model with the same URI', async () => {

@@ -129,6 +129,9 @@ export class MarkdownRenderer {
     // Only renderer-generated styles reach this point; source HTML remains disabled.
     const styles: string[] = [];
     let html = this.#md.renderer.render(tokens, this.#md.options, environment);
+    if (options.interactiveTasks) {
+      html = html.replace(/(<input class="task-list-item-checkbox"(?: checked="")?) disabled=""(?= type="checkbox")/g, '$1');
+    }
     html = html.replace(/<[^>]+\sstyle="[^"]*"[^>]*>/g, (tag) => {
       const css = tag.match(/\sstyle="([^"]*)"/)![1];
       const className = `reader-style-${styles.length}`;

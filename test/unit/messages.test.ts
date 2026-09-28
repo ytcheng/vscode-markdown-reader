@@ -5,6 +5,9 @@ describe('parseWebviewMessage', () => {
   it('accepts every known webview message shape', () => {
     expect(parseWebviewMessage({ type: 'ready' })).toEqual({ type: 'ready' });
     expect(parseWebviewMessage({ type: 'toggleToc' })).toEqual({ type: 'toggleToc' });
+    expect(parseWebviewMessage({ type: 'toggleTask', line: 4, previousChecked: false, checked: true })).toEqual({
+      type: 'toggleTask', line: 4, previousChecked: false, checked: true
+    });
     expect(parseWebviewMessage({ type: 'setTocWidth', width: 300 })).toEqual({ type: 'setTocWidth', width: 300 });
     expect(parseWebviewMessage({ type: 'openSource', line: 3 })).toEqual({ type: 'openSource', line: 3 });
     expect(parseWebviewMessage({ type: 'openLink', href: 'https://example.com' })).toEqual({ type: 'openLink', href: 'https://example.com' });
@@ -23,6 +26,9 @@ describe('parseWebviewMessage', () => {
     expect(parseWebviewMessage({ type: 'runCommand' })).toBeUndefined();
     expect(parseWebviewMessage({ type: 'openSource', line: -1 })).toBeUndefined();
     expect(parseWebviewMessage({ type: 'openSource', line: Number.POSITIVE_INFINITY })).toBeUndefined();
+    expect(parseWebviewMessage({ type: 'toggleTask', line: -1, previousChecked: false, checked: true })).toBeUndefined();
+    expect(parseWebviewMessage({ type: 'toggleTask', line: 1, previousChecked: false, checked: false })).toBeUndefined();
+    expect(parseWebviewMessage({ type: 'toggleTask', line: 1, previousChecked: false, checked: true, extra: true })).toBeUndefined();
     expect(parseWebviewMessage({ type: 'openLink', href: 'x'.repeat(8193) })).toBeUndefined();
     expect(parseWebviewMessage({ type: 'setTocWidth', width: 179 })).toBeUndefined();
     expect(parseWebviewMessage({ type: 'setTocWidth', width: 481 })).toBeUndefined();

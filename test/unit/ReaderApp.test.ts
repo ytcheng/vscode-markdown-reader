@@ -67,6 +67,39 @@ afterEach(() => {
 });
 
 describe('ReaderApp', () => {
+  it('sends task checkbox changes with their source line and previous state', () => {
+    const { app, postMessage } = setup();
+    app.handleMessage({
+      type: 'render',
+      result: {
+        ...renderResult(),
+        html: '<ul class="contains-task-list"><li class="task-list-item" data-source-line="4"><label><input class="task-list-item-checkbox" type="checkbox"> Task</label></li></ul>'
+      }
+    });
+
+    const checkbox = document.querySelector<HTMLInputElement>('.task-list-item-checkbox')!;
+    checkbox.click();
+
+    expect(postMessage).toHaveBeenCalledWith({ type: 'toggleTask', line: 4, previousChecked: false, checked: true });
+  });
+
+  it('reverts a task checkbox when its rendered item has no source line', () => {
+    const { app, postMessage } = setup();
+    app.handleMessage({
+      type: 'render',
+      result: {
+        ...renderResult(),
+        html: '<ul><li class="task-list-item"><input class="task-list-item-checkbox" type="checkbox"></li></ul>'
+      }
+    });
+
+    const checkbox = document.querySelector<HTMLInputElement>('.task-list-item-checkbox')!;
+    checkbox.click();
+
+    expect(checkbox.checked).toBe(false);
+    expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'toggleTask' }));
+  });
+
   it('opens search with Ctrl+F and highlights literal case-insensitive matches', () => {
     const { app } = setup();
     app.handleMessage({ type: 'render', result: { ...renderResult(), html: '<p>Alpha alpha <code>ALPHA</code></p>' } });
@@ -390,21 +423,58 @@ describe('ReaderApp', () => {
     expect(postMessage).toHaveBeenCalledWith({ type: 'setTocWidth', width: 330 });
   });
 
-  it('restores a matching heading first and clamps fallback scroll state', () => {
+  it('restores a matching heading on the initial render', () => {
     const { app } = setup();
     app.handleMessage({
       type: 'render',
       result: renderResult(),
       restore: { activeSlug: 'two', activeHeadingOffset: 12, scrollTop: 0, tocVisible: true, collapsedSlugs: [] }
     });
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(document.documentElement.scrollTop).toBe(12);
+  });
+
+  it('clamps the initial restored scroll position when its active heading is missing', () => {
+    const { app } = setup();
     app.handleMessage({
       type: 'render',
-      result: { ...renderResult(2), headings: [] },
+      result: { ...renderResult(), headings: [] },
       restore: { activeSlug: 'missing', scrollTop: 9_999, tocVisible: true, collapsedSlugs: [] }
     });
 
-    expect(scrollIntoView).toHaveBeenCalled();
     expect(document.documentElement.scrollTop).toBe(900);
+  });
+
+  it('keeps the live scroll position when a rerender receives a stale host snapshot', () => {
+    const { app } = setup();
+    app.handleMessage({ type: 'render', result: renderResult() });
+    document.documentElement.scrollTop = 350;
+
+    app.handleMessage({
+      type: 'render',
+      result: renderResult(2),
+      restore: { scrollTop: 0, tocVisible: true, collapsedSlugs: [] }
+    });
+
+    expect(document.documentElement.scrollTop).toBe(350);
+  });
+
+  it('preserves the live scroll position without re-anchoring an active heading on rerender', async () => {
+    const { app } = setup();
+    app.handleMessage({
+      type: 'render',
+      result: renderResult(),
+      restore: { activeSlug: 'two', activeHeadingOffset: 12, scrollTop: 0, tocVisible: true, collapsedSlugs: [] }
+    });
+    scrollIntoView.mockClear();
+    document.documentElement.scrollTop = 350;
+
+    app.handleMessage({ type: 'render', result: renderResult(2) });
+    await Promise.resolve();
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(document.documentElement.scrollTop).toBe(350);
   });
 
   it('restores collapsed nested TOC entries', () => {

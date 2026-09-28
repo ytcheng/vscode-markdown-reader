@@ -14,9 +14,11 @@ import { classifyLink } from '../security/links.js';
 import { parseWebviewMessage } from '../security/messages.js';
 import { getWebviewHtml } from '../webview/html.js';
 import { resolveReaderLanguage, translate } from '../webview/localization.js';
-import type { ViewportState } from '../webview/messages.js';
+import type { ViewportState, WebviewToExtensionMessage } from '../webview/messages.js';
 
 export const MARKDOWN_READER_VIEW_TYPE = 'markdownReader.preview';
+
+const TASK_LIST_MARKER = /^((?:[ \t]{0,3}>[ \t]?)*[ \t]*(?:[-+*]|\d{1,9}[.)])[ \t]+)\[([ xX])\]/;
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   readonly #sessions = new Map<string, DocumentSession>();
@@ -174,7 +176,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     if (!session) {
       session = new DocumentSession(() => document.getText(), {
         render: async (source, revision) => {
-          const result = await this.#renderer.render(source, revision, { largeFile: useLargeFileMode(source, readSettings(document.uri)) });
+          const result = await this.#renderer.render(source, revision, {
+            largeFile: useLargeFileMode(source, readSettings(document.uri)),
+            interactiveTasks: true
+          });
           this.#renderDigests.set(result, createHash('sha256').update(source).digest('hex'));
           return result;
         }
@@ -231,6 +236,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       await this.#postSettings(panel, document);
       if (!this.#panels.has(panel)) return;
       await this.#sessionFor(document).renderNow();
+      return;
+    }
+    if (message.type === 'toggleTask') {
+      await this.#toggleTask(document, message);
       return;
     }
     if (message.type === 'updateSetting' || message.type === 'resetSettings') {
@@ -292,6 +301,32 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
       }
       else await vscode.commands.executeCommand('vscode.open', resolved.uri);
     }
+  }
+
+  async #toggleTask(document: vscode.TextDocument, message: Extract<WebviewToExtensionMessage, { type: 'toggleTask' }>): Promise<void> {
+    if (message.line >= document.lineCount) return;
+    const line = document.lineAt(message.line).text;
+    const marker = TASK_LIST_MARKER.exec(line);
+    if (!marker) return;
+
+    const currentlyChecked = marker[2].toLowerCase() === 'x';
+    if (currentlyChecked !== message.previousChecked) return;
+
+    const markerStart = marker[1].length;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(
+      document.uri,
+      new vscode.Range(message.line, markerStart, message.line, markerStart + 3),
+      message.checked ? '[x]' : '[ ]'
+    );
+    const session = this.#sessionFor(document);
+    try {
+      if (await vscode.workspace.applyEdit(edit)) return;
+    } catch (error) {
+      await session.renderNow();
+      throw error;
+    }
+    await session.renderNow();
   }
 
   #rememberToc(panel: vscode.WebviewPanel, state: ViewportState): void {

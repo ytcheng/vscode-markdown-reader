@@ -110,7 +110,8 @@ export class ReaderApp {
     if (result.revision <= this.#revision) return;
     this.#imageZoom.close(false);
     this.#cancelSelectionEditTimer();
-    restore ??= this.#revision < 0 ? this.api.getState() : this.captureViewport();
+    const initialRender = this.#revision < 0;
+    restore = initialRender ? (restore ?? this.api.getState()) : this.captureViewport();
     this.#clearSearchMatches();
     this.#updateSearchControls();
     this.#hideSelectionEdit();
@@ -136,12 +137,12 @@ export class ReaderApp {
     this.#renderToc();
     this.#observeHeadings();
     this.#applyTocVisibility();
-    this.#restoreViewport(restore);
+    this.#restoreViewport(restore, initialRender);
     const revision = this.#revision;
     const scrollTop = this.#scrollTop();
     void this.#mermaid.render(this.article).then(() => {
       if (revision !== this.#revision || this.#scrollTop() !== scrollTop) return;
-      this.#restoreViewport(restore);
+      this.#restoreViewport(restore, initialRender);
     });
   }
 
@@ -323,6 +324,23 @@ export class ReaderApp {
   #onClick = (event: MouseEvent): void => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+
+    const taskCheckbox = target.closest<HTMLInputElement>('input.task-list-item-checkbox[type="checkbox"]');
+    if (taskCheckbox && this.article.contains(taskCheckbox)) {
+      const sourceLine = taskCheckbox.closest('li.task-list-item')?.getAttribute('data-source-line');
+      const line = sourceLine === null || sourceLine === undefined ? Number.NaN : Number(sourceLine);
+      if (!Number.isSafeInteger(line) || line < 0) {
+        taskCheckbox.checked = !taskCheckbox.checked;
+        return;
+      }
+      this.api.postMessage({
+        type: 'toggleTask',
+        line,
+        previousChecked: !taskCheckbox.checked,
+        checked: taskCheckbox.checked
+      });
+      return;
+    }
 
     if (target.closest('[data-edit-selection]')) {
       const line = this.#selectionEditLine;
@@ -631,10 +649,10 @@ export class ReaderApp {
     }
   }
 
-  #restoreViewport(restore: ViewportState | undefined): void {
+  #restoreViewport(restore: ViewportState | undefined, useActiveHeading = true): void {
     if (!restore) return;
     this.#setActiveSlug(restore.activeSlug);
-    if (restore.activeSlug && this.#scrollToHeading(restore.activeSlug, restore.activeHeadingOffset)) return;
+    if (useActiveHeading && restore.activeSlug && this.#scrollToHeading(restore.activeSlug, restore.activeHeadingOffset)) return;
     this.#setScrollTop(restore.scrollTop);
   }
 

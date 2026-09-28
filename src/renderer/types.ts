@@ -22,4 +22,5 @@ export interface RenderResult {
 
 export interface RenderOptions {
   largeFile?: boolean;
+  interactiveTasks?: boolean;
 }
