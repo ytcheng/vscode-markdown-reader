@@ -403,6 +403,7 @@ Expected: fence parser 与 source fallback 测试通过后提交。
 - Modify: `test/unit/LocalDiagramFrame.test.ts`
 - Modify: `src/webview/ReaderApp.ts`, `src/webview/LocalDiagramFrame.ts`, `src/webview/localization.ts`
 - Modify: `test/unit/ReaderApp.test.ts`
+- Modify: `src/webview/renderers/graphviz.ts`, `test/unit/GraphvizRenderer.test.ts` (strip only the standard Graphviz XML/DTD prolog)
 
 **Interfaces:**
 - Consumes: fence 的 `figure.local-diagram[data-local-diagram]` 图块、两个 adapter 与 `LocalDiagramFrame.render(id, language, source)`。
@@ -414,19 +415,21 @@ Expected: fence parser 与 source fallback 测试通过后提交。
 - Produces: sandbox 初始化/渲染 30 秒超时会 dispose 当前 iframe、reject 其所有 pending 请求，并允许后续请求创建新 iframe，避免卡住的 PlantUML 队列永久阻塞。
 - Produces: 成功图块包含 `.local-diagram-image`；失败图块保留可见 `<pre>` 并追加 `.local-diagram-error[role="status"]`。
 - Produces: `toSafeSvgDataUri(svg: string): string` 与 `isSafeSvgDataUri(value: string): boolean`。
+- Produces: Graphviz adapter strips only the known XML declaration and SVG 1.1 external DTD; the safety validator rejects any remaining DTD/entity.
+- Produces: PlantUML's `plantuml-src` processing instruction is allowed as inert source metadata; all other processing instructions are rejected.
 
-- [ ] **Step 1: 为 SVG 安全策略写失败测试**
+- [x] **Step 1: 为 SVG 安全策略写失败测试**
 
 在 `test/unit/SvgSafety.test.ts` 对非 SVG 根、畸形闭合、DOCTYPE/ENTITY、`<script>`、`foreignObject`、大小写任意的 `on*`、`javascript:` href、实体编码危险 scheme、外部 `<image>`、外部 CSS `url()` 期望拒绝；`url(#gradient0)` 和 `href="#node1"` 保持可用。
 
-- [ ] **Step 2: 运行 SVG 安全测试确认 helper 缺失**
+- [x] **Step 2: 运行 SVG 安全测试确认 helper 缺失**
 
 Run: `npm run test:unit -- test/unit/SvgSafety.test.ts`
 Expected: FAIL，指出 `src/security/svg.ts` 或 `toSafeSvgDataUri` 不存在。
 
-- [ ] **Step 3: 实现共享 SVG 字符串校验**
+- [x] **Step 3: 实现共享 SVG 字符串校验**
 
-实现 `validateRendererSvg(svg: string): void`，扫描 XML tag/attribute 边界，校验唯一闭合 `<svg>` 根；拒绝 DOCTYPE/ENTITY、活动节点、事件属性、非 fragment href 和 CSS URL。先 XML entity decode、大小写归一、trim 后再判断。`toSafeSvgDataUri` 与 `isSafeSvgDataUri` 共用该校验函数；后者先验证 data URI prefix 并 percent decode。
+实现 `validateRendererSvg(svg: string): void`，用 XML DOMParser 校验唯一闭合 SVG namespace 根；拒绝 DOCTYPE/ENTITY、活动节点、事件属性、非 fragment href、危险 CSS URL 和非 `plantuml-src` 处理指令。DOMParser 只用于校验，不插入主文档。XML parser 会解码属性实体后再验证。Graphviz adapter 只删除其固定的 XML declaration 和 SVG 1.1 外部 DTD；未知 DTD 继续拒绝。`toSafeSvgDataUri` 与 `isSafeSvgDataUri` 共用该校验函数；后者先验证 data URI prefix 并 percent decode。
 
 ```ts
 const SVG_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -441,16 +444,16 @@ export function isSafeSvgDataUri(value: string): boolean {
 }
 ```
 
-- [ ] **Step 4: 为旧消息与错误隔离写 bridge 测试**
+- [x] **Step 4: 为旧消息与错误隔离写 bridge 测试**
 
 在 `test/unit/LocalDiagramFrame.test.ts` 使用 jsdom fake iframe 和 `postMessage` spy。请求 ID 不匹配、来自非当前 iframe 的消息、未知消息类型均不 resolve 请求；正确 `diagramResult` 按 ID resolve；一个 `diagramError` 只 reject 对应请求。用 fake timers 推进 30 秒，断言 timeout dispose 卡住的 iframe、reject 同 frame 其余 pending 项，下一条 render 创建新 iframe。
 
-- [ ] **Step 5: 运行 bridge 测试确认 timeout 与消息边界**
+- [x] **Step 5: 运行 bridge 测试确认 timeout 与消息边界**
 
 Run: `npm run test:unit -- test/unit/LocalDiagramFrame.test.ts`
 Expected: FAIL，证明当前 POC bridge timeout 后未 reset frame，或 pending 请求未被统一 reject。
 
-- [ ] **Step 6: 为 DOM lifecycle 写测试**
+- [x] **Step 6: 为 DOM lifecycle 写测试**
 
 在 `LocalDiagramRenderer.test.ts` 注入 `renderDiagram` spy，验证成功时 `img.src` 是 SVG data URI 并隐藏源码；失败时图块仍有源码且含 `role="status"` 错误；替换 article 后迟到响应不插入旧图。
 
@@ -466,7 +469,7 @@ it('keeps source visible when an individual renderer rejects', async () => {
 
 同一测试文件再控制两个 renderer promise：先启动 revision 1，再写入 revision 2，最后 resolve revision 1；断言旧图块没有 `.local-diagram-image`。失败分支用 `vi.spyOn(console, 'error')` 断言日志包含 renderer 名称与原始异常。
 
-- [ ] **Step 7: 实现请求映射和 stale-result guard**
+- [x] **Step 7: 实现请求映射和 stale-result guard**
 
 `LocalDiagramRenderer` 为每个 figure 维护版本号和当前 revision；从 `<code>.textContent` 取源，按 `data-local-diagram` 派发请求。await 返回后检查 `figure.isConnected`、figure 版本及 revision；不匹配则丢弃结果。
 
@@ -513,9 +516,9 @@ await Promise.all(figures.map(async (figure) => {
 }));
 ```
 
-- [ ] **Step 8: 将 renderer 接入 ReaderApp 并增加双语错误文案**
+- [x] **Step 8: 将 renderer 接入 ReaderApp 并增加双语错误文案**
 
-在 `ReaderApp` 声明 `readonly #localDiagrams: LocalDiagramRenderer`，并在 constructor body 用参数 `document` 初始化它，避免 class field 初始化早于 parameter property。`applyRender` 写入 `article.innerHTML` 后并行启动 Mermaid 与 local render；不等待它们后再显示文档，但将两个 Promise 放入现有的 scroll restoration 完成逻辑，确保图片替换后可恢复阅读位置。`dispose()` 同时释放 local renderer iframe。在 `localization.ts` 增加英文/中文 `diagramRendering`、`plantumlRenderFailed`、`graphvizRenderFailed` 文案键。
+在 `ReaderApp` 声明 `readonly #localDiagrams: LocalDiagramRenderer`，并在 constructor body 用参数 `document` 初始化它，避免 class field 初始化早于 parameter property。可选 `RenderDiagram` 参数只用于注入单测。`applyRender` 写入 `article.innerHTML` 后并行启动 Mermaid 与 local render；不等待它们后再显示文档，但将两个 Promise 放入现有的 scroll restoration 完成逻辑，确保图片替换后可恢复阅读位置。`dispose()` 同时释放 local renderer iframe。在 `localization.ts` 增加英文/中文 `diagramRendering`、`plantumlRenderFailed`、`graphvizRenderFailed` 文案键。
 
 ```ts
 const diagramWork = Promise.all([
@@ -527,14 +530,15 @@ void diagramWork.then(() => {
 });
 ```
 
-- [ ] **Step 9: 运行 renderer unit tests**
+- [x] **Step 9: 运行 renderer unit tests**
 
 Run: `npm run test:unit -- test/unit/SvgSafety.test.ts test/unit/LocalDiagramFrame.test.ts test/unit/LocalDiagramRenderer.test.ts test/unit/ReaderApp.test.ts`
+Run: `npm run test:unit -- test/unit/GraphvizRenderer.test.ts`
 Expected: SVG policy、请求关联、timeout 重置、单图错误、旧 revision 丢弃与现有 ReaderApp 生命周期均 PASS。
 
-- [ ] **Step 10: 提交 Preview renderer 与 SVG policy**
+- [x] **Step 10: 提交 Preview renderer 与 SVG policy**
 
-Run: `git add src/security/svg.ts src/webview/LocalDiagramRenderer.ts src/webview/LocalDiagramFrame.ts src/webview/ReaderApp.ts src/webview/localization.ts test/unit/SvgSafety.test.ts test/unit/LocalDiagramFrame.test.ts test/unit/LocalDiagramRenderer.test.ts test/unit/ReaderApp.test.ts && git commit -m "feat: render local diagrams asynchronously"`
+Run: `git add src/security/svg.ts src/webview/LocalDiagramRenderer.ts src/webview/LocalDiagramFrame.ts src/webview/ReaderApp.ts src/webview/localization.ts src/webview/renderers/graphviz.ts media/local-diagram-frame.js media/local-diagram-frame.js.map media/reader.js media/reader.js.map test/unit/SvgSafety.test.ts test/unit/GraphvizRenderer.test.ts test/unit/LocalDiagramFrame.test.ts test/unit/LocalDiagramRenderer.test.ts test/unit/ReaderApp.test.ts && git commit -m "feat: render local diagrams asynchronously"`
 Expected: Preview lifecycle 与 SVG policy 测试通过后提交。
 
 ## Task 5: 沙箱 CSP 与图块响应式样式

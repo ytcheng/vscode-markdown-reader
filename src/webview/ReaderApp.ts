@@ -1,5 +1,6 @@
 import { ReaderControls } from './ReaderControls.js';
 import { MermaidRenderer } from './MermaidRenderer.js';
+import { LocalDiagramRenderer, type RenderDiagram } from './LocalDiagramRenderer.js';
 import { ImageZoomDialog } from './ImageZoomDialog.js';
 import type { HeadingItem, RenderResult } from '../renderer/types.js';
 import type { ExtensionToWebviewMessage, ViewportState, WebviewToExtensionMessage } from './messages.js';
@@ -24,6 +25,7 @@ export class ReaderApp {
   #revision = -1;
   readonly #controls: ReaderControls;
   readonly #mermaid = new MermaidRenderer();
+  readonly #localDiagrams: LocalDiagramRenderer;
   readonly #imageZoom: ImageZoomDialog;
   #activeSlug: string | undefined;
   #tocVisible = true;
@@ -49,8 +51,10 @@ export class ReaderApp {
 
   constructor(
     private readonly document: Document,
-    private readonly api: VsCodeApi
+    private readonly api: VsCodeApi,
+    renderLocalDiagram?: RenderDiagram
   ) {
+    this.#localDiagrams = new LocalDiagramRenderer(document, renderLocalDiagram);
     this.#controls = new ReaderControls(document, (message) => api.postMessage(message), () => { void this.#mermaid.render(this.article); });
     this.#imageZoom = new ImageZoomDialog(document);
   }
@@ -140,7 +144,11 @@ export class ReaderApp {
     this.#restoreViewport(restore, initialRender);
     const revision = this.#revision;
     const scrollTop = this.#scrollTop();
-    void this.#mermaid.render(this.article).then(() => {
+    const diagramWork = Promise.all([
+      this.#mermaid.render(this.article),
+      this.#localDiagrams.render(this.article, revision)
+    ]);
+    void diagramWork.then(() => {
       if (revision !== this.#revision || this.#scrollTop() !== scrollTop) return;
       this.#restoreViewport(restore, initialRender);
     });
@@ -177,6 +185,7 @@ export class ReaderApp {
     this.window.removeEventListener('pointerup', this.#onResizerPointerUp);
     this.#observer?.disconnect();
     this.#mermaid.dispose();
+    this.#localDiagrams.dispose();
     this.#selectionEditButton?.remove();
     this.#selectionEditButton = undefined;
     if (this.#scrollFrame !== undefined) this.window.cancelAnimationFrame(this.#scrollFrame);

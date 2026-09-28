@@ -135,6 +135,9 @@
       zoomFit: "Fit to window",
       zoomClose: "Close image viewer",
       mermaidRenderFailed: "Unable to render Mermaid diagram. Check the source syntax.",
+      diagramRendering: "Rendering diagram\u2026",
+      plantumlRenderFailed: "Unable to render PlantUML diagram. Check the source syntax.",
+      graphvizRenderFailed: "Unable to render Graphviz diagram. Check the source syntax.",
       errorPrefix: "Markdown Reader"
     },
     "zh-CN": {
@@ -214,6 +217,9 @@
       zoomFit: "\u9002\u5E94\u7A97\u53E3",
       zoomClose: "\u5173\u95ED\u56FE\u7247\u9884\u89C8",
       mermaidRenderFailed: "Mermaid \u56FE\u8868\u6E32\u67D3\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6E90\u7801\u8BED\u6CD5\u3002",
+      diagramRendering: "\u6B63\u5728\u6E32\u67D3\u56FE\u8868\u2026",
+      plantumlRenderFailed: "PlantUML \u56FE\u8868\u6E32\u67D3\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6E90\u7801\u8BED\u6CD5\u3002",
+      graphvizRenderFailed: "Graphviz \u56FE\u8868\u6E32\u67D3\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6E90\u7801\u8BED\u6CD5\u3002",
       errorPrefix: "Markdown Reader"
     }
   };
@@ -648,13 +654,276 @@
     }
   };
 
+  // src/security/svg.ts
+  var SVG_DATA_URI_PREFIX = "data:image/svg+xml;charset=utf-8,";
+  var SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+  var FORBIDDEN_ELEMENTS = /* @__PURE__ */ new Set([
+    "script",
+    "foreignobject",
+    "iframe",
+    "object",
+    "embed",
+    "audio",
+    "video",
+    "animate",
+    "animatemotion",
+    "animatetransform",
+    "set"
+  ]);
+  var URL_ATTRIBUTES = /* @__PURE__ */ new Set(["href", "src", "data", "poster", "action", "formaction"]);
+  function validateRendererSvg(svg) {
+    if (typeof svg !== "string" || !svg.trim()) throw new Error("Renderer returned an empty SVG");
+    if (/<!\s*(?:doctype|entity)\b/i.test(svg)) throw new Error("SVG declarations are not allowed");
+    if (typeof DOMParser === "undefined") throw new Error("SVG validation requires an XML parser");
+    const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+    if (parsed.querySelector("parsererror")) throw new Error("Renderer returned malformed SVG");
+    const root = parsed.documentElement;
+    if (!root || root.localName !== "svg" || root.namespaceURI !== SVG_NAMESPACE) {
+      throw new Error("Renderer output must have an SVG root element");
+    }
+    const validateNode = (node) => {
+      if (node.nodeType === 7) {
+        const target = node.target.toLowerCase();
+        if (target !== "plantuml-src") throw new Error("SVG processing instructions are not allowed");
+      }
+      if (node.nodeType === 1) {
+        const element = node;
+        if (FORBIDDEN_ELEMENTS.has(element.localName.toLowerCase())) {
+          throw new Error("Active SVG elements are not allowed");
+        }
+        for (const attribute of Array.from(element.attributes)) {
+          const name = attribute.name.toLowerCase();
+          const value = attribute.value.trim();
+          if (name.startsWith("on")) throw new Error("SVG event handlers are not allowed");
+          if (name === "xml:base") throw new Error("SVG base URLs are not allowed");
+          if (URL_ATTRIBUTES.has(attribute.localName.toLowerCase()) && value && !value.startsWith("#")) {
+            throw new Error("External SVG references are not allowed");
+          }
+          if (name === "style" || /\burl\s*\(/i.test(value)) validateCss(value);
+        }
+        if (element.localName.toLowerCase() === "style") validateCss(element.textContent ?? "");
+      }
+      for (const child of Array.from(node.childNodes)) validateNode(child);
+    };
+    validateNode(parsed);
+  }
+  function toSafeSvgDataUri(svg) {
+    validateRendererSvg(svg);
+    return `${SVG_DATA_URI_PREFIX}${encodeURIComponent(svg)}`;
+  }
+  function validateCss(css) {
+    const normalized = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    if (normalized.includes("\\") || /@import\b|expression\s*\(|-moz-binding/i.test(normalized)) {
+      throw new Error("Unsafe SVG CSS is not allowed");
+    }
+    const urlPattern = /\burl\s*\(([^)]*)\)/gi;
+    let match;
+    while ((match = urlPattern.exec(normalized)) !== null) {
+      const target = match[1].trim().replace(/^(?:"([^"]*)"|'([^']*)')$/, "$1$2");
+      if (!target.startsWith("#") || target.length < 2 || /[\s"'()]/.test(target.slice(1))) {
+        throw new Error("External SVG CSS references are not allowed");
+      }
+    }
+    if (/\burl\b/i.test(normalized.replace(urlPattern, ""))) {
+      throw new Error("Malformed SVG CSS reference");
+    }
+  }
+
+  // src/webview/LocalDiagramFrame.ts
+  var LocalDiagramFrame = class {
+    constructor(document2) {
+      this.document = document2;
+    }
+    document;
+    #frame;
+    #ready;
+    #finishReady;
+    #loading = false;
+    #pending = /* @__PURE__ */ new Map();
+    async render(id, language, source) {
+      this.#createFrame();
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => this.#reset(new Error("Diagram rendering timed out")), 3e4);
+        this.#pending.set(id, { resolve, reject, timer });
+        void this.#ready.then(() => {
+          if (this.#pending.has(id)) {
+            this.#frame?.contentWindow?.postMessage({ type: "renderDiagram", id, language, source }, "*");
+          }
+        });
+      });
+    }
+    #createFrame() {
+      if (this.#ready) return;
+      const uri = this.document.body.dataset.localDiagramFrameUri;
+      if (!uri) throw new Error("Missing local diagram renderer frame");
+      this.#ready = new Promise((resolve) => {
+        this.#finishReady = resolve;
+      });
+      this.document.defaultView.addEventListener("message", this.#onMessage);
+      const frame = this.document.createElement("iframe");
+      frame.title = "Local diagram renderer";
+      frame.setAttribute("aria-hidden", "true");
+      frame.setAttribute("sandbox", "allow-scripts");
+      frame.style.position = "fixed";
+      frame.style.left = "-10000px";
+      frame.style.width = "1px";
+      frame.style.height = "1px";
+      frame.style.visibility = "hidden";
+      const nonce = this.document.querySelector("#render-styles")?.nonce ?? "";
+      frame.srcdoc = this.document.defaultView.atob(uri.slice(uri.indexOf(",") + 1)).replaceAll("MERMAID_NONCE", nonce);
+      this.#frame = frame;
+      this.document.body.append(frame);
+    }
+    #onMessage = (event) => {
+      if (event.source !== this.#frame?.contentWindow) return;
+      const message = event.data;
+      if (message?.type === "localDiagramBootstrapReady" && !this.#loading) {
+        this.#loading = true;
+        void this.#loadRuntime().catch((error) => this.#reset(asError(error)));
+        return;
+      }
+      if (message?.type === "localDiagramRuntimeError") {
+        this.#reset(new Error(typeof message.error === "string" ? message.error : "Unable to start the local diagram renderer"));
+        return;
+      }
+      if (message?.type === "localDiagramRuntimeReady") {
+        this.#finishReady?.();
+        this.#finishReady = void 0;
+        return;
+      }
+      if (message?.type !== "diagramResult" && message?.type !== "diagramError" || typeof message.id !== "string") return;
+      const pending = this.#pending.get(message.id);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      this.#pending.delete(message.id);
+      if (message.type === "diagramResult" && typeof message.svg === "string") pending.resolve(message.svg);
+      else pending.reject(new Error(typeof message.error === "string" ? message.error : "Diagram rendering failed"));
+    };
+    async #loadRuntime() {
+      const frame = this.#frame;
+      if (!frame) return;
+      const vizUri = this.document.body.dataset.plantUmlVizScriptUri;
+      const runtimeUri = this.document.body.dataset.localDiagramScriptUri;
+      if (!vizUri || !runtimeUri) throw new Error("Missing local PlantUML runtime assets");
+      const fetch = this.document.defaultView.fetch.bind(this.document.defaultView);
+      const [vizResponse, runtimeResponse] = await Promise.all([fetch(vizUri), fetch(runtimeUri)]);
+      if (!vizResponse.ok || !runtimeResponse.ok) throw new Error("Unable to read local PlantUML runtime assets");
+      const [plantUmlVizScript, runtimeScript] = await Promise.all([vizResponse.text(), runtimeResponse.text()]);
+      if (this.#frame !== frame) return;
+      frame.contentWindow?.postMessage({
+        type: "initializeLocalDiagramRuntime",
+        plantUmlVizScript,
+        runtimeScript
+      }, "*");
+    }
+    #reset(error) {
+      this.#finishReady?.();
+      this.#finishReady = void 0;
+      for (const pending of this.#pending.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(error);
+      }
+      this.#pending.clear();
+      this.#frame?.remove();
+      this.#frame = void 0;
+      this.#ready = void 0;
+      this.#loading = false;
+    }
+    dispose() {
+      this.document.defaultView.removeEventListener("message", this.#onMessage);
+      this.#reset(new Error("Local diagram renderer disposed"));
+    }
+  };
+  function asError(value) {
+    return value instanceof Error ? value : new Error(String(value));
+  }
+
+  // src/webview/LocalDiagramRenderer.ts
+  var LocalDiagramRenderer = class {
+    constructor(document2, renderDiagram) {
+      this.document = document2;
+      this.#renderDiagram = renderDiagram ?? ((id, language, source) => {
+        this.#frame ??= new LocalDiagramFrame(this.document);
+        return this.#frame.render(id, language, source);
+      });
+    }
+    document;
+    #frame;
+    #sequence = 0;
+    #revision = -1;
+    #disposed = false;
+    #versions = /* @__PURE__ */ new WeakMap();
+    #renderDiagram;
+    async render(article, revision) {
+      if (this.#disposed || revision < this.#revision) return;
+      this.#revision = revision;
+      const figures = Array.from(article.querySelectorAll("figure.local-diagram[data-local-diagram]"));
+      await Promise.all(figures.map((figure) => this.#renderFigure(figure, revision)));
+    }
+    dispose() {
+      this.#disposed = true;
+      this.#revision += 1;
+      this.#frame?.dispose();
+      this.#frame = void 0;
+    }
+    async #renderFigure(figure, revision) {
+      const language = figure.dataset.localDiagram;
+      if (language !== "plantuml" && language !== "graphviz") return;
+      const sourceBlock = figure.querySelector("pre");
+      const code = sourceBlock?.querySelector("code");
+      if (!sourceBlock || !code) return;
+      const version = (this.#versions.get(figure) ?? 0) + 1;
+      this.#versions.set(figure, version);
+      const id = `reader-local-diagram-${++this.#sequence}`;
+      const source = code.textContent ?? "";
+      const languageName = language;
+      const uiLanguage = this.document.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
+      this.#clearResult(figure);
+      sourceBlock.hidden = false;
+      const loading = this.document.createElement("p");
+      loading.className = "local-diagram-progress";
+      loading.setAttribute("role", "status");
+      loading.textContent = translate(uiLanguage, "diagramRendering");
+      figure.append(loading);
+      try {
+        const svg = await this.#renderDiagram(id, languageName, source);
+        if (!this.#isCurrent(figure, version, revision)) return;
+        const image = this.document.createElement("img");
+        image.className = "local-diagram-image";
+        image.alt = language === "plantuml" ? "PlantUML diagram" : "Graphviz diagram";
+        image.src = toSafeSvgDataUri(svg);
+        sourceBlock.hidden = true;
+        this.#clearResult(figure);
+        figure.append(image);
+      } catch (error) {
+        if (!this.#isCurrent(figure, version, revision)) return;
+        console.error("Markdown Reader diagram render failed", languageName, error);
+        sourceBlock.hidden = false;
+        this.#clearResult(figure);
+        const status = this.document.createElement("p");
+        status.className = "local-diagram-error";
+        status.setAttribute("role", "status");
+        const messageKey = language === "plantuml" ? "plantumlRenderFailed" : "graphvizRenderFailed";
+        const detail = error instanceof Error ? error.message : String(error);
+        status.textContent = `${translate(uiLanguage, messageKey)} ${detail}`;
+        figure.append(status);
+      }
+    }
+    #isCurrent(figure, version, revision) {
+      return !this.#disposed && figure.isConnected && this.#versions.get(figure) === version && revision === this.#revision;
+    }
+    #clearResult(figure) {
+      figure.querySelectorAll(".local-diagram-image, .local-diagram-error, .local-diagram-progress").forEach((node) => node.remove());
+    }
+  };
+
   // src/webview/ImageZoomDialog.ts
   var MIN_ZOOM = 0.5;
   var MAX_ZOOM = 4;
   var ZOOM_STEP = 1.25;
-  var SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+  var SVG_NAMESPACE2 = "http://www.w3.org/2000/svg";
   function createZoomIcon(document2, icon) {
-    const svg = document2.createElementNS(SVG_NAMESPACE, "svg");
+    const svg = document2.createElementNS(SVG_NAMESPACE2, "svg");
     svg.setAttribute("viewBox", "0 0 24 24");
     svg.setAttribute("width", "24");
     svg.setAttribute("height", "24");
@@ -666,17 +935,17 @@
     svg.setAttribute("stroke-linecap", "round");
     svg.setAttribute("stroke-linejoin", "round");
     if (icon === "zoomIn" || icon === "zoomOut") {
-      const lens = document2.createElementNS(SVG_NAMESPACE, "circle");
+      const lens = document2.createElementNS(SVG_NAMESPACE2, "circle");
       lens.setAttribute("cx", "10.5");
       lens.setAttribute("cy", "10.5");
       lens.setAttribute("r", "6.5");
       svg.append(lens);
-      const detail = document2.createElementNS(SVG_NAMESPACE, "path");
+      const detail = document2.createElementNS(SVG_NAMESPACE2, "path");
       detail.setAttribute("d", icon === "zoomIn" ? "M8 10.5h5m-2.5-2.5v5m4.8 2.3L21 21" : "M8 10.5h5m2.3 4.8L21 21");
       svg.append(detail);
       return svg;
     }
-    const shape = document2.createElementNS(SVG_NAMESPACE, "path");
+    const shape = document2.createElementNS(SVG_NAMESPACE2, "path");
     shape.setAttribute("d", icon === "fit" ? "M4 9V5a1 1 0 0 1 1-1h4m6 0h4a1 1 0 0 1 1 1v4m0 6v4a1 1 0 0 1-1 1h-4m-6 0H5a1 1 0 0 1-1-1v-4M9 9h6v6H9z" : "M5 5l14 14M19 5 5 19");
     svg.append(shape);
     return svg;
@@ -893,9 +1162,10 @@
 
   // src/webview/ReaderApp.ts
   var ReaderApp = class {
-    constructor(document2, api) {
+    constructor(document2, api, renderLocalDiagram) {
       this.document = document2;
       this.api = api;
+      this.#localDiagrams = new LocalDiagramRenderer(document2, renderLocalDiagram);
       this.#controls = new ReaderControls(document2, (message) => api.postMessage(message), () => {
         void this.#mermaid.render(this.article);
       });
@@ -906,6 +1176,7 @@
     #revision = -1;
     #controls;
     #mermaid = new MermaidRenderer();
+    #localDiagrams;
     #imageZoom;
     #activeSlug;
     #tocVisible = true;
@@ -1019,7 +1290,11 @@
       this.#restoreViewport(restore, initialRender);
       const revision = this.#revision;
       const scrollTop = this.#scrollTop();
-      void this.#mermaid.render(this.article).then(() => {
+      const diagramWork = Promise.all([
+        this.#mermaid.render(this.article),
+        this.#localDiagrams.render(this.article, revision)
+      ]);
+      void diagramWork.then(() => {
         if (revision !== this.#revision || this.#scrollTop() !== scrollTop) return;
         this.#restoreViewport(restore, initialRender);
       });
@@ -1054,6 +1329,7 @@
       this.window.removeEventListener("pointerup", this.#onResizerPointerUp);
       this.#observer?.disconnect();
       this.#mermaid.dispose();
+      this.#localDiagrams.dispose();
       this.#selectionEditButton?.remove();
       this.#selectionEditButton = void 0;
       if (this.#scrollFrame !== void 0) this.window.cancelAnimationFrame(this.#scrollFrame);

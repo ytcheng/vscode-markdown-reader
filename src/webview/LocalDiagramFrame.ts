@@ -9,16 +9,14 @@ export class LocalDiagramFrame {
   #ready: Promise<void> | undefined;
   #finishReady: (() => void) | undefined;
   #loading = false;
-  #failure: Error | undefined;
   readonly #pending = new Map<string, PendingDiagram>();
 
   constructor(private readonly document: Document) {}
 
   async render(id: string, language: 'plantuml' | 'graphviz', source: string): Promise<string> {
-    if (this.#failure) throw this.#failure;
     this.#createFrame();
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => this.#fail(new Error('Diagram rendering timed out')), 30_000);
+      const timer = setTimeout(() => this.#reset(new Error('Diagram rendering timed out')), 30_000);
       this.#pending.set(id, { resolve, reject, timer });
       void this.#ready!.then(() => {
         if (this.#pending.has(id)) {
@@ -54,15 +52,16 @@ export class LocalDiagramFrame {
     const message = event.data;
     if (message?.type === 'localDiagramBootstrapReady' && !this.#loading) {
       this.#loading = true;
-      void this.#loadRuntime().catch((error: unknown) => this.#fail(asError(error)));
+      void this.#loadRuntime().catch((error: unknown) => this.#reset(asError(error)));
       return;
     }
     if (message?.type === 'localDiagramRuntimeError') {
-      this.#fail(new Error(typeof message.error === 'string' ? message.error : 'Unable to start the local diagram renderer'));
+      this.#reset(new Error(typeof message.error === 'string' ? message.error : 'Unable to start the local diagram renderer'));
       return;
     }
     if (message?.type === 'localDiagramRuntimeReady') {
       this.#finishReady?.();
+      this.#finishReady = undefined;
       return;
     }
     if ((message?.type !== 'diagramResult' && message?.type !== 'diagramError') || typeof message.id !== 'string') return;
@@ -75,6 +74,8 @@ export class LocalDiagramFrame {
   };
 
   async #loadRuntime(): Promise<void> {
+    const frame = this.#frame;
+    if (!frame) return;
     const vizUri = this.document.body.dataset.plantUmlVizScriptUri;
     const runtimeUri = this.document.body.dataset.localDiagramScriptUri;
     if (!vizUri || !runtimeUri) throw new Error('Missing local PlantUML runtime assets');
@@ -82,27 +83,29 @@ export class LocalDiagramFrame {
     const [vizResponse, runtimeResponse] = await Promise.all([fetch(vizUri), fetch(runtimeUri)]);
     if (!vizResponse.ok || !runtimeResponse.ok) throw new Error('Unable to read local PlantUML runtime assets');
     const [plantUmlVizScript, runtimeScript] = await Promise.all([vizResponse.text(), runtimeResponse.text()]);
-    if (!this.#failure) {
-      this.#frame?.contentWindow?.postMessage({
-        type: 'initializeLocalDiagramRuntime', plantUmlVizScript, runtimeScript
-      }, '*');
-    }
+    if (this.#frame !== frame) return;
+    frame.contentWindow?.postMessage({
+      type: 'initializeLocalDiagramRuntime', plantUmlVizScript, runtimeScript
+    }, '*');
   }
 
-  #fail(error: Error): void {
-    this.#failure = error;
+  #reset(error: Error): void {
+    this.#finishReady?.();
+    this.#finishReady = undefined;
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(error);
     }
     this.#pending.clear();
+    this.#frame?.remove();
+    this.#frame = undefined;
+    this.#ready = undefined;
+    this.#loading = false;
   }
 
   dispose(): void {
     this.document.defaultView!.removeEventListener('message', this.#onMessage);
-    this.#fail(new Error('Local diagram renderer disposed'));
-    this.#frame?.remove();
-    this.#frame = undefined;
+    this.#reset(new Error('Local diagram renderer disposed'));
   }
 }
 

@@ -48,3 +48,51 @@ it('loads the local PlantUML assets in order and accepts SVG only from its sandb
   send({ type: 'diagramResult', id: 'reader-local-diagram-1', svg });
   await expect(pending).resolves.toBe(svg);
 });
+
+it('ignores unknown, mismatched, and foreign messages until the matching frame replies', async () => {
+  const { pending, send } = setup();
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
+  let settled = false;
+  void pending.then(() => { settled = true; }, () => { settled = true; });
+
+  send({ type: 'unknownMessage', id: 'reader-local-diagram-1', svg });
+  send({ type: 'diagramResult', id: 'reader-local-diagram-2', svg });
+  send({ type: 'diagramResult', id: 'reader-local-diagram-1', svg }, window);
+  await Promise.resolve();
+  expect(settled).toBe(false);
+
+  send({ type: 'diagramResult', id: 'reader-local-diagram-1', svg });
+  await expect(pending).resolves.toBe(svg);
+});
+
+it('isolates one diagram error from another pending request', async () => {
+  const { pending: first, send } = setup();
+  const second = renderer!.render('reader-local-diagram-2', 'graphviz', 'digraph { A -> B }');
+  const firstError = expect(first).rejects.toThrow('DOT syntax error');
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
+
+  send({ type: 'diagramError', id: 'reader-local-diagram-1', error: 'DOT syntax error' });
+  await firstError;
+  send({ type: 'diagramResult', id: 'reader-local-diagram-2', svg });
+  await expect(second).resolves.toBe(svg);
+});
+
+it('disposes a timed-out frame, rejects its pending requests, and retries in a fresh frame', async () => {
+  vi.useFakeTimers();
+  const { pending: first, frame } = setup();
+  const second = renderer!.render('reader-local-diagram-2', 'graphviz', 'digraph { A -> B }');
+  const firstError = expect(first).rejects.toThrow('Diagram rendering timed out');
+  const secondError = expect(second).rejects.toThrow('Diagram rendering timed out');
+
+  await vi.advanceTimersByTimeAsync(30_000);
+  await Promise.all([firstError, secondError]);
+  expect(frame.isConnected).toBe(false);
+  expect(document.querySelectorAll('iframe')).toHaveLength(0);
+
+  const retry = renderer!.render('reader-local-diagram-3', 'graphviz', 'digraph { B -> C }');
+  const retryError = expect(retry).rejects.toThrow('Local diagram renderer disposed');
+  const retryFrame = document.querySelector('iframe');
+  expect(retryFrame).not.toBe(frame);
+  renderer!.dispose();
+  await retryError;
+});

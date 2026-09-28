@@ -20,7 +20,7 @@ function renderResult(revision = 1) {
   };
 }
 
-function setup() {
+function setup(renderLocalDiagram?: (id: string, language: 'plantuml' | 'graphviz', source: string) => Promise<string>) {
   document.body.innerHTML = `
     <div class="reader">
       <nav id="toc" class="toc" aria-label="Table of contents"></nav>
@@ -42,7 +42,7 @@ function setup() {
     </div>`;
   const postMessage = vi.fn();
   const setState = vi.fn();
-  const app = new ReaderApp(document, { postMessage, getState: () => undefined, setState });
+  const app = new ReaderApp(document, { postMessage, getState: () => undefined, setState }, renderLocalDiagram);
   app.start();
   currentApp = app;
   return { app, postMessage, setState };
@@ -67,6 +67,25 @@ afterEach(() => {
 });
 
 describe('ReaderApp', () => {
+  it('dispatches local diagram fences after inserting the rendered article', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>graph</text></svg>';
+    const renderLocalDiagram = vi.fn(async () => svg);
+    const { app } = setup(renderLocalDiagram);
+    app.handleMessage({
+      type: 'render',
+      result: {
+        ...renderResult(),
+        html: '<figure class="local-diagram" data-local-diagram="graphviz"><pre><code>digraph G { A -> B }</code></pre></figure>'
+      }
+    });
+
+    await vi.waitFor(() => expect(document.querySelector('.local-diagram-image')).not.toBeNull());
+
+    expect(renderLocalDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph G { A -> B }');
+    expect(document.querySelector<HTMLPreElement>('figure pre')?.hidden).toBe(true);
+    expect(document.querySelector('figure img')?.getAttribute('src')).toContain('data:image/svg+xml;charset=utf-8,');
+  });
+
   it('sends task checkbox changes with their source line and previous state', () => {
     const { app, postMessage } = setup();
     app.handleMessage({

@@ -26,7 +26,11 @@ const messages = {
     matchCount: '{current} of {total}', noMatches: '0 of 0', mermaidAlt: 'Mermaid diagram',
     openMermaidDiagram: 'Open Mermaid diagram in zoom viewer', openImageInZoomViewer: 'Open image in zoom viewer',
     zoomViewerTitle: 'Image zoom viewer', zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomFit: 'Fit to window', zoomClose: 'Close image viewer',
-    mermaidRenderFailed: 'Unable to render Mermaid diagram. Check the source syntax.', errorPrefix: 'Markdown Reader',
+    mermaidRenderFailed: 'Unable to render Mermaid diagram. Check the source syntax.',
+    diagramRendering: 'Rendering diagram…',
+    plantumlRenderFailed: 'Unable to render PlantUML diagram. Check the source syntax.',
+    graphvizRenderFailed: 'Unable to render Graphviz diagram. Check the source syntax.',
+    errorPrefix: 'Markdown Reader',
   },
   'zh-CN': {
     largeFileTitle: '大文件模式：语法高亮、数学公式和图表将显示为源码。可在设置中更改。',
@@ -51,7 +55,11 @@ const messages = {
     matchCount: '第 {current} 项，共 {total} 项', noMatches: '0 项', mermaidAlt: 'Mermaid 图表',
     openMermaidDiagram: '点击放大 Mermaid 图', openImageInZoomViewer: '点击放大图片',
     zoomViewerTitle: '图片放大预览', zoomIn: '放大', zoomOut: '缩小', zoomFit: '适应窗口', zoomClose: '关闭图片预览',
-    mermaidRenderFailed: 'Mermaid 图表渲染失败，请检查源码语法。', errorPrefix: 'Markdown Reader',
+    mermaidRenderFailed: 'Mermaid 图表渲染失败，请检查源码语法。',
+    diagramRendering: '正在渲染图表…',
+    plantumlRenderFailed: 'PlantUML 图表渲染失败，请检查源码语法。',
+    graphvizRenderFailed: 'Graphviz 图表渲染失败，请检查源码语法。',
+    errorPrefix: 'Markdown Reader',
   }
 } satisfies Record<string, Record<string, string>>;
 
