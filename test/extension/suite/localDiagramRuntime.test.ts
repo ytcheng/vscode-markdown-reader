@@ -19,6 +19,7 @@ suite('Markdown Reader local diagram runtime', () => {
     const frameUri = `data:text/html;base64,${Buffer.from(frameHtml).toString('base64')}`;
     const finished = new Promise<Record<string, unknown>>((resolve) => {
       panel.webview.onDidReceiveMessage((message) => {
+        if (message.type === 'testRenderProgress') console.log('Local diagram fixture progress:', JSON.stringify(message));
         if (message.type === 'plantumlProbeStage') console.log('Local diagram probe stage:', JSON.stringify(message));
         if (message.type === 'plantumlProbeResult') resolve(message);
       });
@@ -39,4 +40,160 @@ suite('Markdown Reader local diagram runtime', () => {
       panel.dispose();
     }
   });
+
+  test('renders the production local diagram fixture, recovers in dark mode, and reuses its sandbox on refresh', async function () {
+    this.timeout(120_000);
+    const session = await createProductionReader('local-diagrams.md', 'Local diagrams end-to-end');
+    try {
+      const light = await session.waitForReport(1);
+      console.log('Local diagrams end-to-end report:', JSON.stringify(light));
+      assert.strictEqual(light.mermaidLoaded, 1);
+      assert.strictEqual(light.localFigureCount, 8);
+      assert.strictEqual(light.localRendered, 5);
+      assert.strictEqual((light.localErrors as string[]).length, 3);
+      assert.strictEqual(light.localSourceFallbacks, 3);
+      assert.ok((light.localErrors as string[]).some((error) => /PlantUML syntax error/i.test(error)));
+      assert.ok((light.localErrors as string[]).some((error) => /syntax error in line/i.test(error)));
+      assert.ok((light.localErrors as string[]).some((error) => /include directives are unavailable offline/i.test(error)));
+      assert.ok(Number(light.math) > 0);
+      assert.ok(Number(light.codeBlocks) > 0);
+      assert.ok(Number(light.tables) > 0);
+      assert.ok(Number(light.localImageNaturalWidth) > 0, 'The local fixture image must load');
+      assert.strictEqual(light.localSandbox, 'allow-scripts');
+      assert.strictEqual(light.localAllowSameOrigin, false);
+      assert.deepStrictEqual(light.cspErrors, []);
+      assert.deepStrictEqual(light.errors, []);
+      assert.strictEqual((light.localStatuses as Array<{ sourceVisible: boolean }>).filter((status) => status.sourceVisible).length, 3);
+
+      await session.panel.webview.postMessage({ type: 'setColorMode', mode: 'dark' });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const darkReportPromise = session.waitForReport(1);
+      await session.panel.webview.postMessage({ type: 'testProbeReport', revision: 1 });
+      const dark = await darkReportPromise;
+      assert.strictEqual(dark.readerColor, 'dark');
+      assert.strictEqual(dark.localRendered, 5);
+      assert.deepStrictEqual(dark.cspErrors, []);
+
+      for (const revision of [2, 3]) {
+        const reportPromise = session.waitForReport(revision);
+        await session.render(revision);
+        const refreshed = await reportPromise;
+        assert.strictEqual(refreshed.localRendered, 5);
+        assert.strictEqual(refreshed.localRuntimeReadyCount, 1, 'The renderer runtime should initialize once per Preview');
+        assert.strictEqual(refreshed.localFrameReused, true, 'Refresh should retain the existing sandbox iframe');
+        assert.deepStrictEqual(refreshed.cspErrors, []);
+        console.log(`Local diagram refresh ${revision}:`, JSON.stringify({ renderCompleteMs: refreshed.renderCompleteMs, heapAfter: refreshed.heapAfter }));
+      }
+    } finally {
+      session.panel.dispose();
+    }
+  });
+
+  test('records cold start and 15-diagram rendering performance', async function () {
+    this.timeout(120_000);
+    const session = await createProductionReader('diagram-performance.md', 'Diagram performance');
+    try {
+      const report = await session.waitForReport(1);
+      const metrics = {
+        readerReadyMs: report.readerReadyMs,
+        plantumlFirstSvgMs: report.plantumlFirstSvgMs,
+        graphvizFirstSvgMs: report.graphvizFirstSvgMs,
+        renderCompleteMs: report.renderCompleteMs,
+        heapBefore: report.heapBefore,
+        heapAfter: report.heapAfter
+      };
+      console.log('15-diagram performance metrics:', JSON.stringify(metrics));
+      assert.strictEqual(report.mermaidLoaded, 5);
+      assert.strictEqual(report.localFigureCount, 10);
+      assert.strictEqual(report.localRendered, 10);
+      assert.deepStrictEqual(report.localErrors, []);
+      assert.deepStrictEqual(report.cspErrors, []);
+      assert.strictEqual(report.localRuntimeReadyCount, 1);
+      assert.ok(Number(report.readerReadyMs) >= 0);
+      assert.ok(Number(report.plantumlFirstSvgMs) >= 0);
+      assert.ok(Number(report.graphvizFirstSvgMs) >= 0);
+      assert.ok(Number(report.renderCompleteMs) > 0);
+      assert.strictEqual(report.localSandbox, 'allow-scripts');
+    } finally {
+      session.panel.dispose();
+    }
+  });
 });
+
+async function createProductionReader(fixtureName: string, title: string) {
+  const extension = vscode.extensions.getExtension('chengjian.vscode-markdown-reader')!;
+  const supportPath = path.join(__dirname, '../webviewSupport.cjs');
+  const { getWebviewHtml, MarkdownRenderer, WebviewResourceRewriter } = require(supportPath);
+  const fixturePath = path.join(extension.extensionPath, 'test', 'fixtures', fixtureName);
+  const renderer = new MarkdownRenderer();
+  const rendered = await renderer.render(await readFile(fixturePath, 'utf8'), 1);
+  const rewritten = new WebviewResourceRewriter({
+    resolve: (href: string) => {
+      const resolvedPath = path.resolve(path.dirname(fixturePath), href);
+      const relative = path.relative(extension.extensionPath, resolvedPath);
+      return relative.startsWith('..') || path.isAbsolute(relative) ? undefined : vscode.Uri.file(resolvedPath);
+    }
+  });
+
+  const panel = vscode.window.createWebviewPanel('markdownReader.localDiagramFixture', title, vscode.ViewColumn.Active, {
+    enableScripts: true,
+    localResourceRoots: [extension.extensionUri]
+  });
+  const resource = (...parts: string[]) => panel.webview.asWebviewUri(vscode.Uri.joinPath(extension.extensionUri, ...parts)).toString();
+  const [diagramFrameHtml, mermaidFrameHtml] = await Promise.all([
+    readFile(path.join(extension.extensionPath, 'media', 'local-diagram-frame.html')),
+    readFile(path.join(extension.extensionPath, 'media', 'mermaid-frame.html'))
+  ]);
+  const nonce = 'local-diagram-reader-test-nonce';
+  const result = rewritten.rewrite(rendered, panel.webview);
+  const reports = new Map<number, Record<string, unknown>>();
+  const waiters = new Map<number, (report: Record<string, unknown>) => void>();
+  const waitForReport = (revision: number): Promise<Record<string, unknown>> => {
+    const ready = reports.get(revision);
+    if (ready) {
+      reports.delete(revision);
+      return Promise.resolve(ready);
+    }
+    return new Promise((resolve) => waiters.set(revision, resolve));
+  };
+  let initialSent = false;
+  panel.webview.onDidReceiveMessage((message) => {
+    if (message.type === 'testProbeError') console.error('Production Webview probe failed:', message.message);
+    if (message.type === 'testRenderProgress') console.log('Local diagram fixture progress:', JSON.stringify(message));
+    if (message.type === 'ready' && !initialSent) {
+      initialSent = true;
+      void panel.webview.postMessage({ type: 'render', result });
+    }
+    if (message.type !== 'testRenderResult') return;
+    const revision = Number(message.revision);
+    const waiter = waiters.get(revision);
+    if (waiter) {
+      waiters.delete(revision);
+      waiter(message);
+    } else reports.set(revision, message);
+  });
+
+  panel.webview.html = getWebviewHtml({
+    cspSource: panel.webview.cspSource,
+    nonce,
+    mermaidFrameUri: `data:text/html;base64,${mermaidFrameHtml.toString('base64')}`,
+    mermaidScriptUri: resource('media', 'mermaid-frame.js'),
+    localDiagramFrameUri: `data:text/html;base64,${diagramFrameHtml.toString('base64')}`,
+    localDiagramScriptUri: resource('media', 'local-diagram-frame.js'),
+    plantUmlVizScriptUri: resource('media', 'plantuml-viz-global.js'),
+    katexStyleUri: resource('media', 'katex', 'katex.min.css'),
+    scriptUri: resource('media', 'reader.js'),
+    styleUri: resource('media', 'reader.css'),
+    highContrastStyleUri: resource('media', 'high-contrast.css'),
+    vscodeLanguage: 'en',
+    initialSettings: { theme: 'reader', colorMode: 'auto' }
+  }).replace('<script defer', `<script src="${resource('test', 'fixtures', 'webview-probe.js')}"></script><script defer`);
+
+  return {
+    panel,
+    waitForReport,
+    render: async (revision: number) => {
+      await panel.webview.postMessage({ type: 'render', result: { ...result, revision } });
+    }
+  };
+}

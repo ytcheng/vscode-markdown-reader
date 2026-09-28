@@ -2,7 +2,7 @@
 
 **Read Markdown like a document, right in your current VS Code tab.**
 
-A focused reading view for long documents, with a synchronized table of contents, highlighted code, Mermaid diagrams, and math. Great for specs, READMEs, plans, and AI-generated notes.
+A focused reading view for long documents, with a synchronized table of contents, highlighted code, Mermaid, PlantUML and Graphviz diagrams, and math. Great for specs, READMEs, plans, and AI-generated notes.
 
 ![Reader table of contents and rendered plan; selecting a heading jumps to that section](assets/markdown-reader-demo.gif)
 
@@ -23,7 +23,7 @@ A focused reading view for long documents, with a synchronized table of contents
 - **Source and Preview, one shortcut** — switch in either direction with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>.
 - **Find in the document** — use <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> to search, highlight results, and move between matches.
 - **Shiki code highlighting** — TextMate grammars, language labels, and copy buttons; unknown languages remain readable plain text.
-- **Diagrams and math, offline** — Mermaid fenced diagrams and KaTeX inline/block formulas render with bundled resources.
+- **Diagrams and math, offline** — Mermaid, PlantUML and Graphviz diagrams plus KaTeX inline/block formulas render with bundled resources.
 - **Zoomable diagrams and images** — click a Mermaid diagram or standalone Markdown image to open a viewer that fills the preview. Zoom with the bottom controls and drag to pan when the image overflows; linked images keep their link behavior.
 - **Edit what you read** — select body text, then click the pencil that appears above the selection's end, or click the **pencil icon** beside a heading to open its source line in the same editor group.
 - **Copy heading links** — use **#** beside a heading to copy its encoded `#fragment` for links within that document.
@@ -68,7 +68,7 @@ The default is **Reader + Light**, with a white reading surface and an `rgb(249,
 
 **Large file mode** displays a clickable ⚡ indicator and shows code, math and diagrams as source, preserving navigation, copying and search. Switch it off for full rendering. This reduces rendering costs; it does not paginate the Markdown parser or the entire DOM.
 
-**Export HTML** embeds styles, readable local images and math fonts. HTTPS images remain external. Completed Mermaid diagrams are embedded as SVG images; pending diagrams and large-mode content retain source with a notice. Custom system fonts are not bundled.
+**Export HTML** embeds styles, readable local images and math fonts. HTTPS images remain external. Completed Mermaid, PlantUML and Graphviz diagrams are embedded as SVG images; pending diagrams and large-mode content retain source with a notice. Custom system fonts are not bundled.
 
 **Print / Save as PDF** opens a temporary HTML page in your default browser. Use its print button and the browser print dialog to print or save a PDF. Paper styles hide controls, wrap code and improve pagination. There is no native PDF generator. In remote extension environments, export HTML and download it to print in a local browser.
 
@@ -121,7 +121,24 @@ Markdown Reader supports the everyday Markdown features needed for documentation
 - Local and HTTPS images
 - In-document anchors, Markdown file links, and external web links
 
-Use fenced blocks labelled `mermaid` for diagrams, `$...$` for inline math, and `$$...$$` for display math. Mermaid diagrams follow the reading appearance, including dark mode, and update when it changes. Invalid diagrams retain their source with an error message; invalid formulas remain readable. All grammars, diagram code, fonts, and styles are bundled for offline use. Diagrams and formulas render locally without uploading document content or requiring an API key.
+Use fenced blocks labelled `mermaid`, `plantuml` or `puml`, and `dot` or `graphviz` for diagrams; use `$...$` for inline math and `$$...$$` for display math.
+
+```plantuml
+@startuml
+Alice -> Bob
+@enduml
+```
+
+```dot
+digraph G { A -> B }
+```
+
+```mermaid
+graph LR
+  A --> B
+```
+
+PlantUML and Graphviz are rendered locally. No Java installation is required. No Graphviz installation is required. No external rendering server is used. Invalid diagrams retain their source with an error message; invalid formulas remain readable. PlantUML `!include` libraries that are not bundled show a local error and are not fetched from the network. All grammars, diagram code, fonts, and styles are bundled for offline use. Diagrams and formulas render locally without uploading document content or requiring an API key.
 
 Click a Mermaid diagram or a standalone Markdown image to open the zoom viewer. The bottom-center controls are ordered zoom out, current zoom, zoom in, and fit to the preview. Drag an oversized image to pan; close with the top-right button, Escape, or a click on the backdrop. Images wrapped in Markdown links keep their normal link navigation.
 

@@ -10,7 +10,7 @@
 
 - PlantUML 实现优先使用官方 `@plantuml/core`，通过其公开 JavaScript API 渲染，不调用 Java。
 - Graphviz 实现先判断能否经 PlantUML 的稳定公开 API 直接渲染 DOT。当前可查到的 `@plantuml/core` 公开接口提供 `render` 与 `renderToString`，没有 DOT 渲染入口；DOT 因此使用 `@viz-js/viz` 的公开 API，不导入 PlantUML 私有实现。
-- 不允许远程渲染、在线标准库回退或动态下载资源。PlantUML 可选标准库只从随扩展发布的资源解析；未随包提供的 include 显示为该图的局部渲染错误。
+- 不允许远程渲染、在线标准库回退或动态下载资源。PlantUML 的 `!include` / `!import` 只允许使用随扩展发布的资源；当前包未内置可选标准库，因此这些指令在调用 renderer 前以局部错误拒绝，且不会发起网络请求。
 - 主 Webview 的脚本来源、网络来源及 Mermaid 实现保持不变。因为 `srcdoc` renderer iframe 继承主 Webview CSP，父、子 `script-src` 都需加入 `'wasm-unsafe-eval'` 才能运行 Graphviz WASM；不加入 JavaScript `'unsafe-eval'`。子 frame 继续使用 `sandbox="allow-scripts"`，不授予 `allow-same-origin` 或 VS Code API。
 - SVG 不以内联 HTML 写入 Markdown 文档；显示为编码后的 SVG 图片。拒绝带脚本、事件处理器、`javascript:` URL 或外部资源引用的输出。
 - 渲染失败只影响对应图块，源码仍可读，详细原因进入 console，Preview 其他内容保持可用。

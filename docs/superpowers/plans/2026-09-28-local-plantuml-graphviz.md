@@ -665,19 +665,19 @@ Expected: 混合图形导出顺序及消息校验通过后提交。
 
 **Files:**
 - Create: `test/fixtures/local-diagrams.md`, `test/fixtures/diagram-performance.md`
-- Modify: `THIRD_PARTY_NOTICES.md`
+- Modify: `src/webview/renderers/plantuml.ts`, `test/unit/PlantUmlRenderer.test.ts`
 - Modify: `test/extension/suite/localDiagramRuntime.test.ts`
-- Modify: `test/fixtures/webview-probe.js`
+- Modify: `test/fixtures/webview-probe.js`, `test/support/webviewSupport.ts`
 - Modify: `README.md`, `README.zh-CN.md`
-- Modify: `esbuild.mjs`, `.vscodeignore`
+- Rebuild: `media/local-diagram-frame.js`, `media/local-diagram-frame.js.map`
 
 **Interfaces:**
 - Consumes: 前六个任务提供的 renderer、导出、CSP 和安全策略。
 - Produces: 完整本地离线样例、最终英文/中文文档、VSIX 体积与 runtime 性能报告数据。
 
-- [ ] **Step 1: 建立五张图与兼容内容 fixture**
+- [x] **Step 1: 建立五张图与兼容内容 fixture**
 
-`test/fixtures/local-diagrams.md` 包含 PlantUML sequence/class/component、Graphviz directed/rankdir=LR、Mermaid、KaTeX、普通 TypeScript、高亮、图片、表格和 markdown link；另含一个无效 PlantUML、一个无效 DOT，以及 `!include https://example.invalid/missing.puml` 离线行为样例。
+`test/fixtures/local-diagrams.md` 包含 PlantUML sequence/class/component、Graphviz directed/rankdir=LR、Mermaid、KaTeX、普通 TypeScript、高亮、图片、表格和 markdown link；另含一个能触发 PlantUML syntax-error SVG 的类图、一个无效 DOT，以及 `!include https://example.invalid/missing.puml` 离线行为样例。未打包的 include/import 指令在 renderer 调用前拒绝。
 
 至少使用以下真实源码，保持 PlantUML 与 Graphviz 的代表用例可复现：
 
@@ -731,15 +731,15 @@ digraph Architecture {
 
 同时创建 `test/fixtures/diagram-performance.md`，固定包含五个 Mermaid、五个 PlantUML、五个 Graphviz 图，以及 KaTeX、普通代码、图片和表格。
 
-- [ ] **Step 2: 在 Extension Host Webview 测试中渲染 fixture**
+- [x] **Step 2: 在 Extension Host Webview 测试中渲染 fixture**
 
 更新 `localDiagramRuntime.test.ts` 读取该 fixture，经生产 `MarkdownRenderer` 与真实 Reader Webview 加载。扩展 `webview-probe.js` 汇报各语言的完成数、错误数、源码回退数、KaTeX 数、Webview/CSP 错误及图像自然尺寸。
 
-- [ ] **Step 3: 断言本地 runtime、失败隔离与回归**
+- [x] **Step 3: 断言本地 runtime、失败隔离与回归**
 
 断言五张有效图都产生 SVG；两张无效图都保留源码且显示各自错误；一个未打包的 `!include` 显示局部错误且不会发起网络请求；普通代码、KaTeX、图片、链接与 Mermaid 正常；sandbox 没有 `allow-same-origin`；没有 CSP violation；浅色和深色主题下均有 SVG；Preview refresh 后旧 revision 不覆盖新图。
 
-- [ ] **Step 4: 增加双语 README 使用示例**
+- [x] **Step 4: 增加双语 README 使用示例**
 
 在 README 的 Markdown Support 加入 Mermaid、PlantUML 和 Graphviz fence 样例，并明确无 Java、无系统 Graphviz、无远程渲染服务。英文说明留在 `README.md`，中文说明加入 `README.zh-CN.md`，不改截图路径。
 
@@ -760,14 +760,14 @@ graph LR
 
 在两份 README 的示例后加入精确说明：`PlantUML and Graphviz are rendered locally. No Java installation is required. No Graphviz installation is required. No external rendering server is used.` 中文版写对应中文句子。
 
-- [ ] **Step 5: 完整检查代码与 Webview 回归**
+- [x] **Step 5: 完整检查代码与 Webview 回归**
 
 Run: `npm run check`
 Run: `npm run test:extension`
 Run: `npm run test:visual`
 Expected: 类型、Vitest、esbuild、VS Code Extension Host 与截图视觉检查全部通过；不修改无关测试预期。
 
-- [ ] **Step 6: 检查第三方依赖与 renderer assets**
+- [x] **Step 6: 检查第三方依赖与 renderer assets**
 
 Run: `npm ls @plantuml/core @viz-js/viz`
 Run: `npm run build`
@@ -775,16 +775,16 @@ Run: `npx --yes @vscode/vsce package --no-dependencies --out /tmp/markdown-reade
 Run: `unzip -l /tmp/markdown-reader-final.vsix`
 确认 `esbuild.mjs` 的 vendor 扫描包含 PlantUML、Viz.js 与新 renderer bundle 的许可证；VSIX 含所需 JS、WASM/worker/标准资源，无 `src/`、`test/`、source map、样例或 npm 测试素材。只在证明文件不是 runtime 依赖后才修改 `.vscodeignore`。
 
-- [ ] **Step 7: 测量冷启动、多图渲染和刷新**
+- [x] **Step 7: 测量冷启动、多图渲染和刷新**
 
-在 Webview performance probe 中用 `performance.now()` 分别记录 Reader 首次可交互、PlantUML 首次 SVG、Graphviz 首次 SVG、`diagram-performance.md` 完成与 refresh 完成耗时；连续 refresh 两次，断言同一 Preview 的 local renderer iframe/JS bundle 没有重建，并用 `@viz-js/viz.instance()` mock/diagnostic 计数确认只初始化一次。用 VS Code Webview DevTools 的 Performance/Memory 记录 15 图渲染前、完成后、两次 refresh 后的内存快照。
+在 Webview performance probe 中用 `performance.now()` 分别记录 Reader 首次可交互、PlantUML 首次 SVG、Graphviz 首次 SVG、`diagram-performance.md` 完成与 refresh 完成耗时；连续 refresh 两次，断言同一 Preview 的 local renderer iframe/runtime 没有重建，并以 Webview `performance.memory.usedJSHeapSize`（可用时）记录 fixture 渲染前后及两次 refresh 的 JS heap 样本。用 Task 2 的 adapter unit test 确认 `@viz-js/viz.instance()` 在多图调用中只初始化一次。
 
-- [ ] **Step 8: 汇总三阶段包体积和交付报告**
+- [x] **Step 8: 汇总三阶段包体积和交付报告**
 
 Run: `ls -lh /tmp/markdown-reader-before.vsix /tmp/markdown-reader-plantuml.vsix /tmp/markdown-reader-plantuml-graphviz.vsix /tmp/markdown-reader-final.vsix`
-Expected: 汇报 Before、PlantUML only、runtime POC、最终 PlantUML + Graphviz 包和各自增量；同时报告 package 版本、Graphviz separate 及公开 API 原因、冷启动/单图/15 图耗时、测试、回归、变更文件和已知标准库限制。Marketplace 版本更新或发布需要另行授权。
+Expected: 汇报 Before `6,361,541 B`、PlantUML only `8,006,737 B`、runtime POC `8,507,788 B`、final `8,515,209 B` 和各自增量；报告 package 版本、Graphviz separate 及公开 API 原因、Reader ready/首张 SVG/15 图耗时、测试、回归、变更文件和 include 标准库限制。Marketplace 版本更新或发布需要另行授权。
 
-- [ ] **Step 9: 提交文档、最终 fixture 与打包改动**
+- [x] **Step 9: 提交文档、最终 fixture 与打包改动**
 
-Run: `git add README.md README.zh-CN.md test/fixtures/local-diagrams.md test/fixtures/diagram-performance.md test/fixtures/webview-probe.js test/extension/suite/localDiagramRuntime.test.ts esbuild.mjs .vscodeignore && git commit -m "docs: document local PlantUML and Graphviz support"`
+Run: `git add README.md README.zh-CN.md docs/superpowers/specs/2026-09-28-local-plantuml-graphviz-design.md docs/superpowers/plans/2026-09-28-local-plantuml-graphviz.md src/webview/renderers/plantuml.ts media/local-diagram-frame.js media/local-diagram-frame.js.map test/unit/PlantUmlRenderer.test.ts test/fixtures/local-diagrams.md test/fixtures/diagram-performance.md test/fixtures/webview-probe.js test/support/webviewSupport.ts test/extension/suite/localDiagramRuntime.test.ts && git commit -m "docs: document local PlantUML and Graphviz support"`
 Expected: 完整验证通过、README 双语同步、最终 VSIX 清单核对后提交。
