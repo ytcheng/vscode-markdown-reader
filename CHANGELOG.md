@@ -2,6 +2,12 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.12 — 2026-09-28
+
+- Render PlantUML and Graphviz diagrams locally with offline SVG validation and export/print support.
+- Match local diagram appearance to the reader's light/dark theme and open diagrams in the zoom viewer by click or keyboard.
+- Add manual acceptance coverage for PlantUML, Graphviz, theme switching, zoom, export and print.
+
 ## 0.3.11 — 2026-09-26
 
 - Add a table-of-contents heading display setting: default to single-line ellipsis that adapts to the sidebar width, with an option to retain wrapping.

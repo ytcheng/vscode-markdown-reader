@@ -1,5 +1,7 @@
 .gitignore
 .superpowers/
+.worktrees/
+.vscode-test/
 .vscode/
 .github/
 AGENTS.md

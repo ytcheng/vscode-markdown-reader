@@ -2,7 +2,7 @@
   "name": "vscode-markdown-reader",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "publisher": "chengjian",
   "private": true,
   "repository": {

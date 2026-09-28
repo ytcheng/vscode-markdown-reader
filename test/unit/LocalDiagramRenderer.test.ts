@@ -38,6 +38,10 @@ describe('LocalDiagramRenderer', () => {
     expect(renderDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph { A -> B }', true);
     expect(image.src).toBe(toSafeSvgDataUri(validSvg));
     expect(image.dataset.readerColor).toBe('dark');
+    expect(image.classList.contains('reader-image-zoom')).toBe(true);
+    expect(image.getAttribute('role')).toBe('button');
+    expect(image.tabIndex).toBe(0);
+    expect(image.getAttribute('aria-label')).toBe('Open image in zoom viewer: Graphviz diagram');
     expect(figure.querySelector('pre')?.hidden).toBe(true);
     expect(figure.querySelector('.local-diagram-progress')).toBeNull();
   });

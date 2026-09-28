@@ -61,8 +61,12 @@ export class LocalDiagramRenderer {
       const svg = await this.#renderDiagram(id, languageName, source, dark);
       if (!this.#isCurrent(figure, version, revision)) return;
       const image = this.document.createElement('img');
-      image.className = 'local-diagram-image';
+      image.className = 'local-diagram-image reader-image-zoom';
       image.alt = language === 'plantuml' ? 'PlantUML diagram' : 'Graphviz diagram';
+      image.tabIndex = 0;
+      image.setAttribute('role', 'button');
+      const zoomLabel = translate(uiLanguage, 'openImageInZoomViewer');
+      image.setAttribute('aria-label', `${zoomLabel}: ${image.alt}`);
       image.dataset.readerColor = this.document.body.dataset.readerColor ?? (dark ? 'dark' : 'light');
       image.src = toSafeSvgDataUri(svg);
       sourceBlock.hidden = true;

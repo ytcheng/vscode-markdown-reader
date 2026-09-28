@@ -8,6 +8,8 @@ const scrollIntoView = vi.fn();
 let currentApp: ReaderApp | undefined;
 const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
 const originalExecCommandDescriptor = Object.getOwnPropertyDescriptor(document, 'execCommand');
+const originalShowModalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+const originalCloseDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
 
 function renderResult(revision = 1) {
   return {
@@ -59,6 +61,8 @@ beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
   Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 1_000 });
   Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: 100 });
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value() { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value() { this.open = false; this.dispatchEvent(new Event('close')); } });
   document.documentElement.scrollTop = 0;
   document.body.className = 'vscode-light';
   document.body.removeAttribute('data-reader-color');
@@ -72,6 +76,10 @@ afterEach(() => {
   else Reflect.deleteProperty(navigator, 'clipboard');
   if (originalExecCommandDescriptor) Object.defineProperty(document, 'execCommand', originalExecCommandDescriptor);
   else Reflect.deleteProperty(document, 'execCommand');
+  if (originalShowModalDescriptor) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', originalShowModalDescriptor);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+  if (originalCloseDescriptor) Object.defineProperty(HTMLDialogElement.prototype, 'close', originalCloseDescriptor);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
 });
 
 describe('ReaderApp', () => {
@@ -92,6 +100,36 @@ describe('ReaderApp', () => {
     expect(renderLocalDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph G { A -> B }', false);
     expect(document.querySelector<HTMLPreElement>('figure pre')?.hidden).toBe(true);
     expect(document.querySelector('figure img')?.getAttribute('src')).toContain('data:image/svg+xml;charset=utf-8,');
+  });
+
+  it.each([
+    { language: 'plantuml' as const, source: '@startuml Alice -> Bob @enduml' },
+    { language: 'graphviz' as const, source: 'digraph G { A -> B }' }
+  ])('opens $language images in the shared zoom viewer by click and keyboard', async ({ language, source }) => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" /></svg>';
+    const renderLocalDiagram = vi.fn(async () => svg);
+    const { app } = setup(renderLocalDiagram);
+    app.handleMessage({
+      type: 'render',
+      result: {
+        ...renderResult(),
+        html: `<figure class="local-diagram" data-local-diagram="${language}"><pre><code>${source}</code></pre></figure>`
+      }
+    });
+
+    await vi.waitFor(() => expect(document.querySelector('.local-diagram-image')).not.toBeNull());
+    const image = document.querySelector<HTMLImageElement>('.local-diagram-image')!;
+    const dialog = document.querySelector<HTMLDialogElement>('.image-zoom-dialog')!;
+
+    image.click();
+    expect(dialog.open).toBe(true);
+    expect(dialog.querySelector<HTMLImageElement>('.image-zoom-image')?.src).toBe(image.src);
+
+    dialog.close();
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    image.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(true);
+    expect(dialog.open).toBe(true);
   });
 
   it('rerenders PlantUML and Graphviz diagrams when the reader switches to dark mode', async () => {

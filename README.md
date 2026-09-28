@@ -23,8 +23,8 @@ A focused reading view for long documents, with a synchronized table of contents
 - **Source and Preview, one shortcut** — switch in either direction with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>.
 - **Find in the document** — use <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> to search, highlight results, and move between matches.
 - **Shiki code highlighting** — TextMate grammars, language labels, and copy buttons; unknown languages remain readable plain text.
-- **Diagrams and math, offline** — Mermaid, PlantUML and Graphviz diagrams plus KaTeX inline/block formulas render with bundled resources.
-- **Zoomable diagrams and images** — click a Mermaid diagram or standalone Markdown image to open a viewer that fills the preview. Zoom with the bottom controls and drag to pan when the image overflows; linked images keep their link behavior.
+- **Diagrams and math, offline** — Mermaid, PlantUML and Graphviz diagrams plus KaTeX inline/block formulas render with bundled resources and follow the reader's light/dark appearance.
+- **Zoomable diagrams and images** — click a Mermaid, PlantUML or Graphviz diagram, or a standalone Markdown image, to open a viewer that fills the preview. Keyboard users can Tab to a diagram and press Enter or Space. Zoom with the bottom controls and drag to pan when the image overflows; linked images keep their link behavior.
 - **Edit what you read** — select body text, then click the pencil that appears above the selection's end, or click the **pencil icon** beside a heading to open its source line in the same editor group.
 - **Copy heading links** — use **#** beside a heading to copy its encoded `#fragment` for links within that document.
 - **Remember your TOC** — visibility and collapsed branches survive closing/reopening a document, independently for each document in the workspace.
@@ -140,7 +140,7 @@ graph LR
 
 PlantUML and Graphviz are rendered locally. No Java installation is required. No Graphviz installation is required. No external rendering server is used. Invalid diagrams retain their source with an error message; invalid formulas remain readable. PlantUML `!include` libraries that are not bundled show a local error and are not fetched from the network. All grammars, diagram code, fonts, and styles are bundled for offline use. Diagrams and formulas render locally without uploading document content or requiring an API key.
 
-Click a Mermaid diagram or a standalone Markdown image to open the zoom viewer. The bottom-center controls are ordered zoom out, current zoom, zoom in, and fit to the preview. Drag an oversized image to pan; close with the top-right button, Escape, or a click on the backdrop. Images wrapped in Markdown links keep their normal link navigation.
+Click a Mermaid, PlantUML or Graphviz diagram, or a standalone Markdown image, to open the zoom viewer. Keyboard users can Tab to a diagram and press Enter or Space. The bottom-center controls are ordered zoom out, current zoom, zoom in, and fit to the preview. Drag an oversized image to pan; close with the top-right button, Escape, or a click on the backdrop. Images wrapped in Markdown links keep their normal link navigation.
 
 Source navigation from a text selection targets the beginning of its Markdown block. Links, buttons, and form controls keep their normal behavior. TOC state is remembered for the most recent 100 document URIs in each workspace; existing split previews remain independent. `toc.enabled` sets the default for documents without saved state.
 
