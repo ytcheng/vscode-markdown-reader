@@ -11,7 +11,7 @@
 - PlantUML 实现优先使用官方 `@plantuml/core`，通过其公开 JavaScript API 渲染，不调用 Java。
 - Graphviz 实现先判断能否经 PlantUML 的稳定公开 API 直接渲染 DOT。当前可查到的 `@plantuml/core` 公开接口提供 `render` 与 `renderToString`，没有 DOT 渲染入口；DOT 因此使用 `@viz-js/viz` 的公开 API，不导入 PlantUML 私有实现。
 - 不允许远程渲染、在线标准库回退或动态下载资源。PlantUML 可选标准库只从随扩展发布的资源解析；未随包提供的 include 显示为该图的局部渲染错误。
-- 保持主 Webview CSP 与 Mermaid 实现不变。任何为 WASM 或 worker 所需的 CSP 权限只配置在隔离的渲染 iframe 中，并经 VS Code Webview 实测后确定。
+- 主 Webview 的脚本来源、网络来源及 Mermaid 实现保持不变。因为 `srcdoc` renderer iframe 继承主 Webview CSP，父、子 `script-src` 都需加入 `'wasm-unsafe-eval'` 才能运行 Graphviz WASM；不加入 JavaScript `'unsafe-eval'`。子 frame 继续使用 `sandbox="allow-scripts"`，不授予 `allow-same-origin` 或 VS Code API。
 - SVG 不以内联 HTML 写入 Markdown 文档；显示为编码后的 SVG 图片。拒绝带脚本、事件处理器、`javascript:` URL 或外部资源引用的输出。
 - 渲染失败只影响对应图块，源码仍可读，详细原因进入 console，Preview 其他内容保持可用。
 - 优先级为稳定性、可维护性，然后是包体积。不得为减少包体积依赖未公开 API 或删去 runtime 必需文件。
@@ -88,7 +88,7 @@ flowchart LR
 - iframe 仅加载扩展安装包内的代码和资源，不配置网络加载路径；外部 PlantUML 标准库加载被禁用。
 - renderer 输出在接收端检查有效 SVG 根元素，以及 script、事件处理器、危险 URL 和外部资源引用；校验失败时不显示该 SVG。
 - SVG 只通过 `img.src = data:image/svg+xml;charset=utf-8,...` 载入，不使用 `innerHTML` 或 DOMParser 后插入主文档。
-- 如必须允许 WASM/worker 执行，仅为 renderer iframe 添加经实测所需的最小 CSP 指令；主 Webview CSP 不放宽。
+- 只为 WebAssembly 编译加入 CSP 的 `'wasm-unsafe-eval'`，不允许 JavaScript 字符串求值用的 `'unsafe-eval'`。srcdoc iframe 继承父 CSP，因此父、子 `script-src` 均需该 token；其他脚本、网络源与 sandbox 权限维持最小范围。
 
 ## 导出行为
 

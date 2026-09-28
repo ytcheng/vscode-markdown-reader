@@ -14,7 +14,7 @@ export class LocalDiagramFrame {
 
   constructor(private readonly document: Document) {}
 
-  async render(id: string, language: 'plantuml', source: string): Promise<string> {
+  async render(id: string, language: 'plantuml' | 'graphviz', source: string): Promise<string> {
     if (this.#failure) throw this.#failure;
     this.#createFrame();
     return new Promise((resolve, reject) => {
@@ -71,7 +71,7 @@ export class LocalDiagramFrame {
     clearTimeout(pending.timer);
     this.#pending.delete(message.id);
     if (message.type === 'diagramResult' && typeof message.svg === 'string') pending.resolve(message.svg);
-    else pending.reject(new Error(typeof message.error === 'string' ? message.error : 'PlantUML rendering failed'));
+    else pending.reject(new Error(typeof message.error === 'string' ? message.error : 'Diagram rendering failed'));
   };
 
   async #loadRuntime(): Promise<void> {

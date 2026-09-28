@@ -62,7 +62,7 @@ const localDiagramBootstrap = await build({
   format: 'iife', write: false, minify: true
 });
 const localDiagramBootstrapScript = localDiagramBootstrap.outputFiles[0].text;
-await writeFile('media/local-diagram-frame.html', `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-MERMAID_NONCE'; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none';"></head><body><script nonce="MERMAID_NONCE">${localDiagramBootstrapScript}</script></body></html>`);
+await writeFile('media/local-diagram-frame.html', `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-MERMAID_NONCE' 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none';"></head><body><script nonce="MERMAID_NONCE">${localDiagramBootstrapScript}</script></body></html>`);
 
 
 // Ship notices for the actual bundled runtime packages, including diagram dependencies.
@@ -85,6 +85,8 @@ for (const root of [...packageRoots].sort()) {
   }
   notices.push(`${manifest.name}@${manifest.version}: ${manifest.license ?? 'See package license'}`);
 }
+notices.push('Graphviz@16.0.0 (embedded by @viz-js/viz): EPL-2.0');
+notices.push('Expat@2.8.4 (embedded by Graphviz WebAssembly): MIT');
 await writeFile('media/vendor/BUNDLED_PACKAGES.txt', `${notices.join('\n')}\n`);
 
 await build({

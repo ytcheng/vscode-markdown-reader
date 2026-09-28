@@ -20,11 +20,15 @@ frame.srcdoc = comma < 0 ? '' : srcdoc.replaceAll('MERMAID_NONCE', nonce);
 
 let started = false;
 let finished = false;
-const report = (svg: string, error = '') => {
+let plantumlSvg = '';
+let graphvizSvg = '';
+let graphvizTimer: number | undefined;
+const report = (error = '') => {
   if (finished) return;
   finished = true;
+  if (graphvizTimer !== undefined) window.clearTimeout(graphvizTimer);
   api.postMessage({
-    type: 'plantumlProbeResult', svg, error,
+    type: 'plantumlProbeResult', plantumlSvg, graphvizSvg, error,
     sandbox: frame.getAttribute('sandbox'),
     cspErrors,
     scriptUris: [vizUri, runtimeUri]
@@ -44,8 +48,7 @@ window.addEventListener('error', (event) => {
 });
 frame.addEventListener('load', () => {
   const cspNonce = frame.srcdoc.match(/script-src 'nonce-([^']+)'/)?.[1] ?? '';
-  const scriptNonce = frame.srcdoc.match(/<script nonce="([^"]+)"/)?.[1] ?? '';
-  stage('frame-load', { frameUriPresent: Boolean(frameUri), nonceLength: nonce.length, cspNonce, scriptNonce, placeholderRemains: frame.srcdoc.includes('MERMAID_NONCE') });
+  stage('frame-load', { frameUriPresent: Boolean(frameUri), nonceLength: nonce.length, cspNonce });
 });
 stage('probe-start', { frameUriPresent: Boolean(frameUri), runtimeUriPresent: Boolean(runtimeUri), vizUriPresent: Boolean(vizUri), nonceLength: nonce.length });
 window.addEventListener('message', (event) => {
@@ -62,7 +65,7 @@ window.addEventListener('message', (event) => {
         type: 'initializeLocalDiagramRuntime', plantUmlVizScript, runtimeScript
       }, '*');
       stage('initialize-sent');
-    }).catch((error: unknown) => report('', error instanceof Error ? error.message : String(error)));
+    }).catch((error: unknown) => report(error instanceof Error ? error.message : String(error)));
     return;
   }
   if (message?.type === 'localDiagramRuntimeReady') {
@@ -76,16 +79,31 @@ window.addEventListener('message', (event) => {
   }
   if (message?.type === 'diagramResult' && message.id === 'reader-local-diagram-1' && typeof message.svg === 'string') {
     stage('render-result', { svgBytes: message.svg.length });
-    report(message.svg);
+    plantumlSvg = message.svg;
+    window.setTimeout(() => {
+      frame.contentWindow?.postMessage({
+        type: 'renderDiagram', id: 'reader-local-diagram-2', language: 'graphviz',
+        source: 'digraph G { A -> B; B -> C; C -> A }'
+      }, '*');
+      stage('graphviz-render-sent');
+    }, 0);
+    graphvizTimer = window.setTimeout(() => report('Graphviz probe timed out'), 10_000);
     return;
   }
-  if (message?.type === 'diagramError' && message.id === 'reader-local-diagram-1') {
-    report('', typeof message.error === 'string' ? message.error : 'PlantUML render failed');
+  if (message?.type === 'diagramResult' && message.id === 'reader-local-diagram-2' && typeof message.svg === 'string') {
+    graphvizSvg = message.svg;
+    stage('graphviz-render-result', { svgBytes: message.svg.length });
+    report();
+    return;
+  }
+  if (message?.type === 'diagramError' && (message.id === 'reader-local-diagram-1' || message.id === 'reader-local-diagram-2')) {
+    stage('diagram-error', { id: message.id, error: message.error });
+    report(typeof message.error === 'string' ? message.error : `${String(message.id)} render failed`);
     return;
   }
   if (message?.type === 'localDiagramRuntimeError') {
     stage('runtime-error', { message: message.error });
-    report('', typeof message.error === 'string' ? message.error : 'Local diagram runtime failed');
+    report(typeof message.error === 'string' ? message.error : 'Local diagram runtime failed');
   }
 });
 

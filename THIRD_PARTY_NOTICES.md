@@ -22,3 +22,10 @@ and High Contrast overrides. No upstream business logic is included.
 - [@mdit/plugin-tex](https://github.com/mdit-plugins/mdit-plugins), 1.1.1, MIT: Markdown math delimiters. Macro state is scoped to each render.
 
 Dependency license texts are distributed in `media/vendor/`. Runtime dependencies and their versions are recorded in `package-lock.json`.
+
+## Local diagram rendering
+
+- [`@plantuml/core`](https://github.com/plantuml/plantuml), 1.2026.8, MIT: local PlantUML rendering. Its package license is included under `media/vendor/@plantuml/core/`.
+- [`@viz-js/viz`](https://github.com/mdaines/viz-js), 3.30.0, MIT: JavaScript API and WebAssembly wrapper for local Graphviz rendering. Its MIT license is included at `media/vendor/@viz-js/viz/Viz.js-MIT.txt`.
+- [Graphviz](https://graphviz.org/), 16.0.0, EPL-2.0: Graphviz WebAssembly code included by `@viz-js/viz`. The license text is included at `media/vendor/@viz-js/viz/Graphviz-EPL-2.0.txt`; [the matching Graphviz source archive](https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.0.0/graphviz-16.0.0.tar.gz) is available from the upstream release service.
+- [Expat](https://github.com/libexpat/libexpat), 2.8.4, MIT: XML parser compiled into the Graphviz WebAssembly build. Its license is included at `media/vendor/@viz-js/viz/Expat-MIT.txt`; [the matching Expat source archive](https://github.com/libexpat/libexpat/releases/download/R_2_8_4/expat-2.8.4.tar.gz) is available from upstream.

@@ -33,7 +33,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${options.cspSource} https: data:; frame-src 'self'; connect-src ${options.cspSource}; font-src ${options.cspSource}; style-src ${options.cspSource} 'unsafe-inline'; script-src ${options.cspSource}${options.nonce ? ` 'nonce-${options.nonce}'` : ''};">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${options.cspSource} https: data:; frame-src 'self'; connect-src ${options.cspSource}; font-src ${options.cspSource}; style-src ${options.cspSource} 'unsafe-inline'; script-src ${options.cspSource}${options.nonce ? ` 'nonce-${options.nonce}'` : ''} 'wasm-unsafe-eval';">
   <link rel="stylesheet" href="${options.styleUri}">
   <link rel="stylesheet" href="${options.highContrastStyleUri}">
   ${options.katexStyleUri ? `<link rel="stylesheet" href="${options.katexStyleUri}">` : ''}

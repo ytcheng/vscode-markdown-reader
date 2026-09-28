@@ -11,6 +11,7 @@ it('restricts scripts to local resources and permits Mermaid generated styles', 
 
   expect(html).toContain("default-src 'none'");
   expect(html).toContain('script-src vscode-webview:');
+  expect(html).toMatch(/script-src vscode-webview: 'wasm-unsafe-eval';/);
   expect(html).toContain('style-src vscode-webview:');
   expect(html).toContain("style-src vscode-webview: 'unsafe-inline'");
   expect(html).not.toMatch(/script-src [^;]*'unsafe-inline'/);

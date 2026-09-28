@@ -12,6 +12,7 @@
 @shikijs/types@4.4.3: MIT
 @shikijs/vscode-textmate@10.0.2: MIT
 @upsetjs/venn.js@2.0.0: MIT
+@viz-js/viz@3.30.0: MIT
 ccount@2.0.1: MIT
 character-entities-html4@2.1.0: MIT
 character-entities-legacy@3.0.0: MIT
@@ -97,3 +98,5 @@ ts-dedent@2.3.0: MIT
 uc.micro@3.0.0: MIT
 uuid@14.0.2: MIT
 zwitch@2.0.4: MIT
+Graphviz@16.0.0 (embedded by @viz-js/viz): EPL-2.0
+Expat@2.8.4 (embedded by Graphviz WebAssembly): MIT

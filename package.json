@@ -58,6 +58,7 @@
     "@md-reader/theme": "2.0.5",
     "@mdit/plugin-tex": "1.1.1",
     "@plantuml/core": "1.2026.8",
+    "@viz-js/viz": "3.30.0",
     "katex": "0.18.7",
     "markdown-it": "15.0.2",
     "markdown-it-task-lists": "2.1.1",
