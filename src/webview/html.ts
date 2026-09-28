@@ -6,6 +6,9 @@ export interface WebviewHtmlOptions {
   nonce?: string;
   mermaidFrameUri?: string;
   mermaidScriptUri?: string;
+  localDiagramFrameUri?: string;
+  localDiagramScriptUri?: string;
+  plantUmlVizScriptUri?: string;
   katexStyleUri?: string;
   scriptUri: string;
   styleUri: string;
@@ -22,6 +25,9 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   const configuredColorMode = options.initialSettings?.colorMode;
   const readerColorMode = configuredColorMode === 'dark' || configuredColorMode === 'auto' ? configuredColorMode : 'light';
   const readerColor = readerColorMode === 'auto' ? '' : ` data-reader-color="${readerColorMode}"`;
+  const localDiagramFrameUri = escapeHtmlAttribute(options.localDiagramFrameUri ?? '');
+  const localDiagramScriptUri = escapeHtmlAttribute(options.localDiagramScriptUri ?? '');
+  const plantUmlVizScriptUri = escapeHtmlAttribute(options.plantUmlVizScriptUri ?? '');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,7 +40,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   <style id="render-styles" nonce="${options.nonce ?? ''}"></style>
   <script defer src="${options.scriptUri}"></script>
 </head>
-<body class="vscode-light" data-vscode-language="${escapedVscodeLanguage}" data-reader-language="${language}" data-reader-theme="${readerTheme}" data-reader-color-mode="${readerColorMode}"${readerColor} data-mermaid-frame-uri="${options.mermaidFrameUri ?? ''}" data-mermaid-script-uri="${options.mermaidScriptUri ?? ''}">
+<body class="vscode-light" data-vscode-language="${escapedVscodeLanguage}" data-reader-language="${language}" data-reader-theme="${readerTheme}" data-reader-color-mode="${readerColorMode}"${readerColor} data-mermaid-frame-uri="${options.mermaidFrameUri ?? ''}" data-mermaid-script-uri="${options.mermaidScriptUri ?? ''}" data-local-diagram-frame-uri="${localDiagramFrameUri}" data-local-diagram-script-uri="${localDiagramScriptUri}" data-plant-uml-viz-script-uri="${plantUmlVizScriptUri}">
   ${controlsHtml}
   <div class="reader">
     <nav id="toc" class="toc" aria-label="Table of contents" data-i18n-aria-label="tableOfContents"></nav>
@@ -56,4 +62,8 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   </div>
 </body>
 </html>`;
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value.replace(/[&"<>]/g, (character) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[character]!);
 }

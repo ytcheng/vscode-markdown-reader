@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 await mkdir('media/katex', { recursive: true });
 await cp('node_modules/katex/dist/katex.min.css', 'media/katex/katex.min.css');
 await cp('node_modules/katex/dist/fonts', 'media/katex/fonts', { recursive: true });
+await cp('node_modules/@plantuml/core/viz-global.js', 'media/plantuml-viz-global.js');
 
 const bundles = await Promise.all([
   build({
@@ -32,6 +33,12 @@ const bundles = await Promise.all([
   }),
   build({
     metafile: true,
+    entryPoints: ['src/webview/local-diagram-frame.ts'], bundle: true,
+    platform: 'browser', format: 'iife', outfile: 'media/local-diagram-frame.js',
+    minify: true, sourcemap: true
+  }),
+  build({
+    metafile: true,
     entryPoints: ['test/visual/generate.ts'],
     bundle: true,
     platform: 'node',
@@ -50,10 +57,17 @@ const bootstrap = await build({
 const frameScript = bootstrap.outputFiles[0].text;
 await writeFile('media/mermaid-frame.html', `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-MERMAID_NONCE'; style-src 'unsafe-inline'; img-src data:; font-src 'none';"></head><body><script nonce="MERMAID_NONCE">${frameScript}</script></body></html>`);
 
+const localDiagramBootstrap = await build({
+  entryPoints: ['src/webview/local-diagram-bootstrap.ts'], bundle: true, platform: 'browser',
+  format: 'iife', write: false, minify: true
+});
+const localDiagramBootstrapScript = localDiagramBootstrap.outputFiles[0].text;
+await writeFile('media/local-diagram-frame.html', `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-MERMAID_NONCE'; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none';"></head><body><script nonce="MERMAID_NONCE">${localDiagramBootstrapScript}</script></body></html>`);
+
 
 // Ship notices for the actual bundled runtime packages, including diagram dependencies.
 const packageRoots = new Set();
-for (const bundle of bundles.slice(0, 3)) {
+for (const bundle of bundles.slice(0, 4)) {
   for (const input of Object.keys(bundle.metafile.inputs)) {
     const parts = input.split('/');
     const index = parts.lastIndexOf('node_modules');
@@ -76,4 +90,9 @@ await writeFile('media/vendor/BUNDLED_PACKAGES.txt', `${notices.join('\n')}\n`);
 await build({
   entryPoints: ['test/support/webviewSupport.ts'], bundle: true, platform: 'node', format: 'cjs',
   outfile: 'dist/test/webviewSupport.cjs'
+});
+
+await build({
+  entryPoints: ['test/support/localDiagramProbe.ts'], bundle: true, platform: 'browser', format: 'iife',
+  outfile: 'dist/test/localDiagramProbe.js'
 });

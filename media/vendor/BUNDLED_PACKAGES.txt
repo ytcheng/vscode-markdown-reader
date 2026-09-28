@@ -2,6 +2,7 @@
 @iconify/utils@3.1.7: MIT
 @mdit/plugin-tex@1.1.1: MIT
 @mermaid-js/parser@1.2.1: MIT
+@plantuml/core@1.2026.8: MIT
 @shikijs/core@4.4.3: MIT
 @shikijs/engine-javascript@4.4.3: MIT
 @shikijs/engine-oniguruma@4.4.3: MIT

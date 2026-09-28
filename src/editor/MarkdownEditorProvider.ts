@@ -36,6 +36,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   readonly #readyPanels = new Set<vscode.WebviewPanel>();
   #settingsWrites: Promise<void> = Promise.resolve();
   #mermaidFrameUri: PromiseLike<string> | undefined;
+  #localDiagramFrameUri: PromiseLike<string> | undefined;
   activeDocumentUri: vscode.Uri | undefined;
   #activePanel: vscode.WebviewPanel | undefined;
 
@@ -86,11 +87,17 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
     const mermaidFrameUri = await (this.#mermaidFrameUri ??= vscode.workspace.fs.readFile(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'mermaid-frame.html')
     ).then((bytes) => `data:text/html;base64,${Buffer.from(bytes).toString('base64')}`));
+    const localDiagramFrameUri = await (this.#localDiagramFrameUri ??= vscode.workspace.fs.readFile(
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'local-diagram-frame.html')
+    ).then((bytes) => `data:text/html;base64,${Buffer.from(bytes).toString('base64')}`));
     if (!this.#panels.has(panel)) return;
     webview.html = getWebviewHtml({
       cspSource: webview.cspSource,
       mermaidScriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'mermaid-frame.js')).toString(),
       mermaidFrameUri,
+      localDiagramScriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'local-diagram-frame.js')).toString(),
+      localDiagramFrameUri,
+      plantUmlVizScriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'plantuml-viz-global.js')).toString(),
       nonce: randomBytes(18).toString('base64'),
       katexStyleUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'katex', 'katex.min.css')).toString(),
       scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'reader.js')).toString(),
