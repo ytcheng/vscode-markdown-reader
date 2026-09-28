@@ -5,26 +5,26 @@ import { LocalDiagramFrame } from '../../src/webview/LocalDiagramFrame.js';
 let renderer: LocalDiagramFrame | undefined;
 afterEach(() => { renderer?.dispose(); renderer = undefined; vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function setup() {
+function setup(dark = false) {
   document.body.innerHTML = '<style id="render-styles" nonce="test-nonce"></style>';
   document.body.dataset.localDiagramFrameUri = `data:text/html;base64,${btoa('<script nonce="MERMAID_NONCE"></script>')}`;
   document.body.dataset.localDiagramScriptUri = 'https://local-resource/local-diagram-frame.js';
   document.body.dataset.plantUmlVizScriptUri = 'https://local-resource/plantuml-viz-global.js';
   renderer = new LocalDiagramFrame(document);
-  const pending = renderer.render('reader-local-diagram-1', 'plantuml', '@startuml\nAlice -> Bob\n@enduml');
+  const pending = renderer.render('reader-local-diagram-1', 'plantuml', '@startuml\nAlice -> Bob\n@enduml', dark);
   const frame = document.querySelector('iframe')!;
   const post = vi.spyOn(frame.contentWindow!, 'postMessage');
   const send = (data: unknown, source: Window = frame.contentWindow!) => window.dispatchEvent(new MessageEvent('message', { source, data }));
   return { pending, frame, post, send };
 }
 
-it('loads the local PlantUML assets in order and accepts SVG only from its sandbox', async () => {
+it('loads the local PlantUML assets in order, forwards the color mode, and accepts SVG only from its sandbox', async () => {
   const fetch = vi.fn(async (uri: string) => ({
     ok: true,
     text: async () => uri.endsWith('plantuml-viz-global.js') ? 'window.Viz = {};' : 'bundled PlantUML frame'
   }));
   vi.stubGlobal('fetch', fetch);
-  const { pending, frame, post, send } = setup();
+  const { pending, frame, post, send } = setup(true);
   expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
   expect(frame.srcdoc).toContain('nonce="test-nonce"');
   expect(frame.getAttribute('src')).toBeNull();
@@ -42,7 +42,7 @@ it('loads the local PlantUML assets in order and accepts SVG only from its sandb
 
   send({ type: 'localDiagramRuntimeReady' });
   await vi.waitFor(() => expect(post).toHaveBeenCalledWith({
-    type: 'renderDiagram', id: 'reader-local-diagram-1', language: 'plantuml', source: '@startuml\nAlice -> Bob\n@enduml'
+    type: 'renderDiagram', id: 'reader-local-diagram-1', language: 'plantuml', source: '@startuml\nAlice -> Bob\n@enduml', dark: true
   }, '*'));
   const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>Alice</text></svg>';
   send({ type: 'diagramResult', id: 'reader-local-diagram-1', svg });

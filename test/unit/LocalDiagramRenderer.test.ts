@@ -27,6 +27,7 @@ function deferred<T>() {
 
 describe('LocalDiagramRenderer', () => {
   it('renders a validated SVG image and hides source only after success', async () => {
+    document.body.dataset.readerColor = 'dark';
     const { article, figure } = addFigure('graphviz', 'digraph { A -> B }');
     const renderDiagram = vi.fn(async () => validSvg);
     renderer = new LocalDiagramRenderer(document, renderDiagram);
@@ -34,8 +35,9 @@ describe('LocalDiagramRenderer', () => {
     await renderer.render(article, 1);
 
     const image = figure.querySelector<HTMLImageElement>('.local-diagram-image')!;
-    expect(renderDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph { A -> B }');
+    expect(renderDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph { A -> B }', true);
     expect(image.src).toBe(toSafeSvgDataUri(validSvg));
+    expect(image.dataset.readerColor).toBe('dark');
     expect(figure.querySelector('pre')?.hidden).toBe(true);
     expect(figure.querySelector('.local-diagram-progress')).toBeNull();
   });
@@ -78,5 +80,23 @@ describe('LocalDiagramRenderer', () => {
     newResult.resolve(validSvg);
     await newRender;
     expect(newFigure.querySelector('.local-diagram-image')).not.toBeNull();
+  });
+
+  it('renders PlantUML and Graphviz with the current dark mode', async () => {
+    document.body.dataset.readerColor = 'dark';
+    const article = document.createElement('article');
+    article.innerHTML = `
+      <figure class="local-diagram" data-local-diagram="plantuml"><pre><code>@startuml A -> B @enduml</code></pre></figure>
+      <figure class="local-diagram" data-local-diagram="graphviz"><pre><code>digraph { A -> B }</code></pre></figure>`;
+    document.body.append(article);
+    const renderDiagram = vi.fn(async () => validSvg);
+    renderer = new LocalDiagramRenderer(document, renderDiagram);
+
+    await renderer.render(article, 1);
+
+    expect(renderDiagram).toHaveBeenCalledTimes(2);
+    expect(renderDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'plantuml', '@startuml A -> B @enduml', true);
+    expect(renderDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph { A -> B }', true);
+    expect(article.querySelectorAll('.local-diagram-image')).toHaveLength(2);
   });
 });

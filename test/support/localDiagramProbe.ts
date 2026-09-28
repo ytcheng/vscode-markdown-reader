@@ -78,7 +78,7 @@ window.addEventListener('message', (event) => {
     stage('runtime-ready');
     frame.contentWindow?.postMessage({
       type: 'renderDiagram', id: 'reader-local-diagram-1', language: 'plantuml',
-      source: '@startuml\nAlice -> Bob: Hello\nBob --> Alice: Hi\n@enduml'
+      source: '@startuml\nAlice -> Bob: Hello\nBob --> Alice: Hi\n@enduml', dark: false
     }, '*');
     stage('render-sent');
     return;
@@ -89,7 +89,7 @@ window.addEventListener('message', (event) => {
     window.setTimeout(() => {
       frame.contentWindow?.postMessage({
         type: 'renderDiagram', id: 'reader-local-diagram-2', language: 'graphviz',
-        source: 'digraph G { A -> B; B -> C; C -> A }'
+        source: 'digraph G { A -> B; B -> C; C -> A }', dark: false
       }, '*');
       stage('graphviz-render-sent');
     }, 0);

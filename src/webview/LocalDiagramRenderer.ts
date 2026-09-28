@@ -3,7 +3,7 @@ import { LocalDiagramFrame } from './LocalDiagramFrame.js';
 import { translate, type ReaderUiLanguage } from './localization.js';
 
 export type LocalDiagramLanguage = 'plantuml' | 'graphviz';
-export type RenderDiagram = (id: string, language: LocalDiagramLanguage, source: string) => Promise<string>;
+export type RenderDiagram = (id: string, language: LocalDiagramLanguage, source: string, dark: boolean) => Promise<string>;
 
 export class LocalDiagramRenderer {
   #frame: LocalDiagramFrame | undefined;
@@ -14,9 +14,9 @@ export class LocalDiagramRenderer {
   readonly #renderDiagram: RenderDiagram;
 
   constructor(private readonly document: Document, renderDiagram?: RenderDiagram) {
-    this.#renderDiagram = renderDiagram ?? ((id, language, source) => {
+    this.#renderDiagram = renderDiagram ?? ((id, language, source, dark) => {
       this.#frame ??= new LocalDiagramFrame(this.document);
-      return this.#frame.render(id, language, source);
+      return this.#frame.render(id, language, source, dark);
     });
   }
 
@@ -47,6 +47,7 @@ export class LocalDiagramRenderer {
     const source = code.textContent ?? '';
     const languageName: LocalDiagramLanguage = language;
     const uiLanguage: ReaderUiLanguage = this.document.body.dataset.readerLanguage === 'zh-CN' ? 'zh-CN' : 'en';
+    const dark = isDarkReader(this.document.body);
 
     this.#clearResult(figure);
     sourceBlock.hidden = false;
@@ -57,11 +58,12 @@ export class LocalDiagramRenderer {
     figure.append(loading);
 
     try {
-      const svg = await this.#renderDiagram(id, languageName, source);
+      const svg = await this.#renderDiagram(id, languageName, source, dark);
       if (!this.#isCurrent(figure, version, revision)) return;
       const image = this.document.createElement('img');
       image.className = 'local-diagram-image';
       image.alt = language === 'plantuml' ? 'PlantUML diagram' : 'Graphviz diagram';
+      image.dataset.readerColor = this.document.body.dataset.readerColor ?? (dark ? 'dark' : 'light');
       image.src = toSafeSvgDataUri(svg);
       sourceBlock.hidden = true;
       this.#clearResult(figure);
@@ -88,4 +90,8 @@ export class LocalDiagramRenderer {
   #clearResult(figure: HTMLElement): void {
     figure.querySelectorAll('.local-diagram-image, .local-diagram-error, .local-diagram-progress').forEach((node) => node.remove());
   }
+}
+
+function isDarkReader(body: HTMLElement): boolean {
+  return body.dataset.readerColor === 'dark' || (body.dataset.readerColor === 'high-contrast' && !body.classList.contains('vscode-high-contrast-light'));
 }

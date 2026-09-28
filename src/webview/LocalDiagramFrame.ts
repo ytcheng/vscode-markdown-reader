@@ -13,14 +13,14 @@ export class LocalDiagramFrame {
 
   constructor(private readonly document: Document) {}
 
-  async render(id: string, language: 'plantuml' | 'graphviz', source: string): Promise<string> {
+  async render(id: string, language: 'plantuml' | 'graphviz', source: string, dark = false): Promise<string> {
     this.#createFrame();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => this.#reset(new Error('Diagram rendering timed out')), 30_000);
       this.#pending.set(id, { resolve, reject, timer });
       void this.#ready!.then(() => {
         if (this.#pending.has(id)) {
-          this.#frame?.contentWindow?.postMessage({ type: 'renderDiagram', id, language, source }, '*');
+          this.#frame?.contentWindow?.postMessage({ type: 'renderDiagram', id, language, source, dark }, '*');
         }
       });
     });

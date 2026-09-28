@@ -6,6 +6,7 @@ interface RenderRequest {
   id: string;
   language: 'plantuml' | 'graphviz';
   source: string;
+  dark: boolean;
 }
 
 window.addEventListener('message', (event: MessageEvent) => {
@@ -13,9 +14,12 @@ window.addEventListener('message', (event: MessageEvent) => {
   const message = event.data as Partial<RenderRequest> | undefined;
   if (message?.type !== 'renderDiagram' || typeof message.id !== 'string' ||
       !/^reader-local-diagram-\d+$/.test(message.id) ||
-      (message.language !== 'plantuml' && message.language !== 'graphviz') || typeof message.source !== 'string') return;
+      (message.language !== 'plantuml' && message.language !== 'graphviz') || typeof message.source !== 'string' ||
+      typeof message.dark !== 'boolean') return;
 
-  const render = message.language === 'plantuml' ? renderPlantUML : renderGraphviz;
+  const render = message.language === 'plantuml'
+    ? (source: string) => renderPlantUML(source, message.dark!)
+    : (source: string) => renderGraphviz(source, message.dark!);
   void render(message.source).then(
     (svg) => parent.postMessage({ type: 'diagramResult', id: message.id, svg }, '*'),
     (error: unknown) => parent.postMessage({

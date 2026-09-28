@@ -64,6 +64,13 @@ suite('Markdown Reader local diagram runtime', () => {
       assert.deepStrictEqual(light.cspErrors, []);
       assert.deepStrictEqual(light.errors, []);
       assert.strictEqual((light.localStatuses as Array<{ sourceVisible: boolean }>).filter((status) => status.sourceVisible).length, 3);
+      const lightPlantumlImages = (light.localImages as Array<{ language: string; readerColor: string; svgColorSignature: string }>).filter((image) => image.language === 'plantuml');
+      assert.strictEqual(lightPlantumlImages.length, 3);
+      assert.ok(lightPlantumlImages.every((image) => image.readerColor === 'light'), 'PlantUML fixture should start in light mode');
+      const lightGraphvizImages = (light.localImages as Array<{ language: string; readerColor: string; graphvizCanvasTransparent: boolean }>).filter((image) => image.language === 'graphviz');
+      assert.strictEqual(lightGraphvizImages.length, 2);
+      assert.ok(lightGraphvizImages.every((image) => image.readerColor === 'light'), 'The fixture should start in light mode');
+      assert.ok(lightGraphvizImages.every((image) => image.graphvizCanvasTransparent), 'Graphviz canvas should be transparent in light mode');
 
       await session.panel.webview.postMessage({ type: 'setColorMode', mode: 'dark' });
       await new Promise((resolve) => setTimeout(resolve, 250));
@@ -72,6 +79,15 @@ suite('Markdown Reader local diagram runtime', () => {
       const dark = await darkReportPromise;
       assert.strictEqual(dark.readerColor, 'dark');
       assert.strictEqual(dark.localRendered, 5);
+      const darkPlantumlImages = (dark.localImages as Array<{ language: string; readerColor: string; svgColorSignature: string }>).filter((image) => image.language === 'plantuml');
+      assert.strictEqual(darkPlantumlImages.length, 3);
+      assert.ok(darkPlantumlImages.every((image) => image.readerColor === 'dark'), 'PlantUML images should be rerendered in dark mode');
+      assert.ok(darkPlantumlImages.every((image, index) => image.svgColorSignature !== lightPlantumlImages[index].svgColorSignature), 'PlantUML foreground colors should respond to dark mode');
+      const darkGraphvizImages = (dark.localImages as Array<{ language: string; readerColor: string; graphvizCanvasTransparent: boolean; graphvizDarkForeground: boolean }>).filter((image) => image.language === 'graphviz');
+      assert.strictEqual(darkGraphvizImages.length, 2);
+      assert.ok(darkGraphvizImages.every((image) => image.readerColor === 'dark'), 'Graphviz images should be rerendered in dark mode');
+      assert.ok(darkGraphvizImages.every((image) => image.graphvizCanvasTransparent), 'Graphviz canvas should remain transparent in dark mode');
+      assert.ok(darkGraphvizImages.every((image) => image.graphvizDarkForeground), 'Default Graphviz labels should use a light foreground in dark mode');
       assert.deepStrictEqual(dark.cspErrors, []);
 
       for (const revision of [2, 3]) {
@@ -162,7 +178,7 @@ async function createProductionReader(fixtureName: string, title: string) {
     if (message.type === 'testRenderProgress') console.log('Local diagram fixture progress:', JSON.stringify(message));
     if (message.type === 'ready' && !initialSent) {
       initialSent = true;
-      void panel.webview.postMessage({ type: 'render', result });
+      void panel.webview.postMessage({ type: 'setColorMode', mode: 'light' }).then(() => panel.webview.postMessage({ type: 'render', result }));
     }
     if (message.type !== 'testRenderResult') return;
     const revision = Number(message.revision);

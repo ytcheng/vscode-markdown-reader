@@ -55,7 +55,10 @@ export class ReaderApp {
     renderLocalDiagram?: RenderDiagram
   ) {
     this.#localDiagrams = new LocalDiagramRenderer(document, renderLocalDiagram);
-    this.#controls = new ReaderControls(document, (message) => api.postMessage(message), () => { void this.#mermaid.render(this.article); });
+    this.#controls = new ReaderControls(document, (message) => api.postMessage(message), () => {
+      void this.#mermaid.render(this.article);
+      if (this.#revision >= 0) void this.#localDiagrams.render(this.article, this.#revision);
+    });
     this.#imageZoom = new ImageZoomDialog(document);
   }
 

@@ -863,14 +863,14 @@
     #finishReady;
     #loading = false;
     #pending = /* @__PURE__ */ new Map();
-    async render(id, language, source) {
+    async render(id, language, source, dark = false) {
       this.#createFrame();
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => this.#reset(new Error("Diagram rendering timed out")), 3e4);
         this.#pending.set(id, { resolve, reject, timer });
         void this.#ready.then(() => {
           if (this.#pending.has(id)) {
-            this.#frame?.contentWindow?.postMessage({ type: "renderDiagram", id, language, source }, "*");
+            this.#frame?.contentWindow?.postMessage({ type: "renderDiagram", id, language, source, dark }, "*");
           }
         });
       });
@@ -965,9 +965,9 @@
   var LocalDiagramRenderer = class {
     constructor(document2, renderDiagram) {
       this.document = document2;
-      this.#renderDiagram = renderDiagram ?? ((id, language, source) => {
+      this.#renderDiagram = renderDiagram ?? ((id, language, source, dark) => {
         this.#frame ??= new LocalDiagramFrame(this.document);
-        return this.#frame.render(id, language, source);
+        return this.#frame.render(id, language, source, dark);
       });
     }
     document;
@@ -1001,6 +1001,7 @@
       const source = code.textContent ?? "";
       const languageName = language;
       const uiLanguage = this.document.body.dataset.readerLanguage === "zh-CN" ? "zh-CN" : "en";
+      const dark = isDarkReader(this.document.body);
       this.#clearResult(figure);
       sourceBlock.hidden = false;
       const loading = this.document.createElement("p");
@@ -1009,11 +1010,12 @@
       loading.textContent = translate(uiLanguage, "diagramRendering");
       figure.append(loading);
       try {
-        const svg = await this.#renderDiagram(id, languageName, source);
+        const svg = await this.#renderDiagram(id, languageName, source, dark);
         if (!this.#isCurrent(figure, version, revision)) return;
         const image = this.document.createElement("img");
         image.className = "local-diagram-image";
         image.alt = language === "plantuml" ? "PlantUML diagram" : "Graphviz diagram";
+        image.dataset.readerColor = this.document.body.dataset.readerColor ?? (dark ? "dark" : "light");
         image.src = toSafeSvgDataUri(svg);
         sourceBlock.hidden = true;
         this.#clearResult(figure);
@@ -1039,6 +1041,9 @@
       figure.querySelectorAll(".local-diagram-image, .local-diagram-error, .local-diagram-progress").forEach((node) => node.remove());
     }
   };
+  function isDarkReader(body) {
+    return body.dataset.readerColor === "dark" || body.dataset.readerColor === "high-contrast" && !body.classList.contains("vscode-high-contrast-light");
+  }
 
   // src/webview/ImageZoomDialog.ts
   var MIN_ZOOM = 0.5;
@@ -1291,6 +1296,7 @@
       this.#localDiagrams = new LocalDiagramRenderer(document2, renderLocalDiagram);
       this.#controls = new ReaderControls(document2, (message) => api.postMessage(message), () => {
         void this.#mermaid.render(this.article);
+        if (this.#revision >= 0) void this.#localDiagrams.render(this.article, this.#revision);
       });
       this.#imageZoom = new ImageZoomDialog(document2);
     }

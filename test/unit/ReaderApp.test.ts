@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReaderApp } from '../../src/webview/ReaderApp.js';
+import { controlsHtml } from '../../src/webview/controlsHtml.js';
 
 const scrollIntoView = vi.fn();
 let currentApp: ReaderApp | undefined;
@@ -20,7 +21,7 @@ function renderResult(revision = 1) {
   };
 }
 
-function setup(renderLocalDiagram?: (id: string, language: 'plantuml' | 'graphviz', source: string) => Promise<string>) {
+function setup(renderLocalDiagram?: (id: string, language: 'plantuml' | 'graphviz', source: string, dark: boolean) => Promise<string>, includeControls = false) {
   document.body.innerHTML = `
     <div class="reader">
       <nav id="toc" class="toc" aria-label="Table of contents"></nav>
@@ -40,6 +41,10 @@ function setup(renderLocalDiagram?: (id: string, language: 'plantuml' | 'graphvi
         <article id="document" class="markdown-body"></article>
       </main>
     </div>`;
+  if (includeControls) {
+    document.body.dataset.readerColorMode = 'auto';
+    document.body.insertAdjacentHTML('afterbegin', controlsHtml);
+  }
   const postMessage = vi.fn();
   const setState = vi.fn();
   const app = new ReaderApp(document, { postMessage, getState: () => undefined, setState }, renderLocalDiagram);
@@ -55,6 +60,9 @@ beforeEach(() => {
   Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 1_000 });
   Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: 100 });
   document.documentElement.scrollTop = 0;
+  document.body.className = 'vscode-light';
+  document.body.removeAttribute('data-reader-color');
+  document.body.removeAttribute('data-reader-color-mode');
 });
 
 afterEach(() => {
@@ -70,7 +78,7 @@ describe('ReaderApp', () => {
   it('dispatches local diagram fences after inserting the rendered article', async () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>graph</text></svg>';
     const renderLocalDiagram = vi.fn(async () => svg);
-    const { app } = setup(renderLocalDiagram);
+    const { app } = setup(renderLocalDiagram, true);
     app.handleMessage({
       type: 'render',
       result: {
@@ -81,9 +89,31 @@ describe('ReaderApp', () => {
 
     await vi.waitFor(() => expect(document.querySelector('.local-diagram-image')).not.toBeNull());
 
-    expect(renderLocalDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph G { A -> B }');
+    expect(renderLocalDiagram).toHaveBeenCalledWith(expect.stringMatching(/^reader-local-diagram-\d+$/), 'graphviz', 'digraph G { A -> B }', false);
     expect(document.querySelector<HTMLPreElement>('figure pre')?.hidden).toBe(true);
     expect(document.querySelector('figure img')?.getAttribute('src')).toContain('data:image/svg+xml;charset=utf-8,');
+  });
+
+  it('rerenders PlantUML and Graphviz diagrams when the reader switches to dark mode', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>graph</text></svg>';
+    const renderLocalDiagram = vi.fn(async (_id: string, _language: 'plantuml' | 'graphviz', _source: string, _dark: boolean) => svg);
+    const { app } = setup(renderLocalDiagram, true);
+    app.handleMessage({
+      type: 'render',
+      result: {
+        ...renderResult(),
+        html: '<figure class="local-diagram" data-local-diagram="plantuml"><pre><code>@startuml Alice -> Bob @enduml</code></pre></figure><figure class="local-diagram" data-local-diagram="graphviz"><pre><code>digraph G { A -> B }</code></pre></figure>'
+      }
+    });
+    await vi.waitFor(() => expect(renderLocalDiagram).toHaveBeenCalledTimes(2));
+
+    app.handleMessage({ type: 'setColorMode', mode: 'dark' });
+
+    await vi.waitFor(() => expect(renderLocalDiagram).toHaveBeenCalledTimes(4));
+    expect(renderLocalDiagram.mock.calls[2][1]).toBe('plantuml');
+    expect(renderLocalDiagram.mock.calls[2][3]).toBe(true);
+    expect(renderLocalDiagram.mock.calls[3][1]).toBe('graphviz');
+    expect(renderLocalDiagram.mock.calls[3][3]).toBe(true);
   });
 
   it('sends task checkbox changes with their source line and previous state', () => {

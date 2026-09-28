@@ -41,13 +41,20 @@ function collectReport(message, startedAt, force = false) {
     const loaded = Boolean(image?.complete && image.naturalWidth > 0);
     const error = figure.querySelector('.local-diagram-error')?.textContent ?? '';
     const language = figure.dataset.localDiagram;
+    const imageSource = loaded ? image.getAttribute('src') ?? '' : '';
+    const svg = imageSource.startsWith('data:image/svg+xml;charset=utf-8,')
+      ? decodeURIComponent(imageSource.slice('data:image/svg+xml;charset=utf-8,'.length)) : '';
     return {
       language,
       loaded,
       error,
       sourceVisible: figure.querySelector('pre')?.hidden === false,
       naturalWidth: loaded ? image.naturalWidth : 0,
-      naturalHeight: loaded ? image.naturalHeight : 0
+      naturalHeight: loaded ? image.naturalHeight : 0,
+      readerColor: image?.dataset.readerColor ?? '',
+      svgColorSignature: [...svg.matchAll(/\b(?:fill|stroke)="([^"]+)"/gi)].map((match) => match[1]).sort().join('|'),
+      graphvizCanvasTransparent: language === 'graphviz' && !/<g\b(?=[^>]*\bid="graph0")(?=[^>]*\bclass="graph")[^>]*>\s*<title>[^<]*<\/title>\s*<polygon\b/i.test(svg),
+      graphvizDarkForeground: language === 'graphviz' && /fill="#e6edf3"/i.test(svg)
     };
   });
   const localDone = localStates.every((state) => state.loaded || state.error);
@@ -71,7 +78,7 @@ function collectReport(message, startedAt, force = false) {
     localRendered: localStates.filter((state) => state.loaded).length,
     localErrors: localStates.filter((state) => state.error).map((state) => state.error),
     localSourceFallbacks: localStates.filter((state) => state.error && state.sourceVisible).length,
-    localImages: localStates.filter((state) => state.loaded).map(({ language, naturalWidth, naturalHeight }) => ({ language, naturalWidth, naturalHeight })),
+    localImages: localStates.filter((state) => state.loaded).map(({ language, naturalWidth, naturalHeight, readerColor, svgColorSignature, graphvizCanvasTransparent, graphvizDarkForeground }) => ({ language, naturalWidth, naturalHeight, readerColor, svgColorSignature, graphvizCanvasTransparent, graphvizDarkForeground })),
     localImageNaturalWidth: [...document.querySelectorAll('#document img:not(.local-diagram-image):not(.mermaid-diagram)')]
       .find((image) => image.complete && image.naturalWidth > 0)?.naturalWidth ?? 0,
     localStatuses: localStates,
@@ -93,6 +100,20 @@ function collectReport(message, startedAt, force = false) {
     complete: localDone && mermaidDone
   };
   realTestApi.postMessage(report);
+}
+
+function collectAfterLocalDiagramsSettle(message) {
+  const startedAt = performance.now();
+  const timer = setInterval(() => {
+    const settled = [...document.querySelectorAll('#document figure.local-diagram[data-local-diagram]')].every((figure) => {
+      const image = figure.querySelector('.local-diagram-image');
+      return Boolean((image?.complete && image.naturalWidth > 0) || figure.querySelector('.local-diagram-error'));
+    });
+    if (settled || performance.now() - startedAt > 90_000) {
+      clearInterval(timer);
+      collectReport(message, startedAt, true);
+    }
+  }, 50);
 }
 
 window.addEventListener('message', (event) => {
@@ -153,5 +174,5 @@ window.addEventListener('message', (event) => {
     }, 50);
     return;
   }
-  if (message?.type === 'testProbeReport') collectReport(message, performance.now(), true);
+  if (message?.type === 'testProbeReport') collectAfterLocalDiagramsSettle(message);
 });
