@@ -5,6 +5,12 @@ window.addEventListener('error', (event) => {
   parent.postMessage({ type: 'localDiagramRuntimeError', error: event.message || 'Local diagram runtime failed to load' }, '*');
 });
 
+window.addEventListener('securitypolicyviolation', (event) => {
+  parent.postMessage({
+    type: 'localDiagramCspViolation', directive: event.violatedDirective, blockedUri: event.blockedURI
+  }, '*');
+});
+
 window.addEventListener('message', (event: MessageEvent) => {
   if (event.source !== parent || initialized || event.data?.type !== 'initializeLocalDiagramRuntime') return;
   const message = event.data;

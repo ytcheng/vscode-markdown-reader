@@ -37,6 +37,20 @@ it('restricts scripts to local resources and permits Mermaid generated styles', 
   expect(html).toContain('aria-live="polite"');
 });
 
+it('keeps the parent script policy local while allowing only WebAssembly compilation', () => {
+  const html = getWebviewHtml({
+    cspSource: 'vscode-webview:',
+    nonce: 'diagram-test-nonce',
+    scriptUri: 'webview://reader.js',
+    styleUri: 'webview://reader.css',
+    highContrastStyleUri: 'webview://hc.css'
+  });
+  const scriptSources = html.match(/script-src ([^;]+);/)?.[1];
+
+  expect(scriptSources).toBe("vscode-webview: 'nonce-diagram-test-nonce' 'wasm-unsafe-eval'");
+  expect(scriptSources).not.toContain("'unsafe-eval'");
+});
+
 it('puts the saved dark appearance in the initial webview body', () => {
   const html = getWebviewHtml({
     cspSource: 'vscode-webview:',

@@ -86,6 +86,16 @@ it('uses a compact, light-text search input like the editor find control', async
   expect(css).toMatch(/\.search-bar input\s*\{[^}]*height:\s*26px[^}]*padding:\s*1px 6px[^}]*color:\s*var\(--vscode-input-foreground, #f0f0f0\)/s);
 });
 
+it('keeps local diagram figures scrollable and their SVGs responsive', async () => {
+  const source = await readFile('media/reader.less', 'utf8');
+  const { css } = await less.render(source, { filename: 'media/reader.less' });
+
+  expect(css).toMatch(/\.markdown-body figure\.local-diagram\s*\{[^}]*margin:\s*1\.5em 0[^}]*max-width:\s*100%[^}]*overflow-x:\s*auto/s);
+  expect(css).toMatch(/\.markdown-body \.local-diagram-image\s*\{[^}]*display:\s*block[^}]*max-width:\s*100%[^}]*height:\s*auto[^}]*margin-inline:\s*auto/s);
+  expect(css).toMatch(/\.markdown-body \.local-diagram-progress\s*\{[^}]*color:\s*var\(--text-muted\)[^}]*font-size:\s*0\.9em/s);
+  expect(css).toMatch(/\.markdown-body \.local-diagram-error\s*\{[^}]*color:\s*var\(--danger-color\)[^}]*font-size:\s*0\.9em/s);
+});
+
 it('keeps find input and result widths stable across localized match counts', async () => {
   const source = await readFile('media/reader.less', 'utf8');
   const { css } = await less.render(source, { filename: 'media/reader.less' });

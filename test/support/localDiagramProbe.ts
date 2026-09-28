@@ -54,6 +54,12 @@ stage('probe-start', { frameUriPresent: Boolean(frameUri), runtimeUriPresent: Bo
 window.addEventListener('message', (event) => {
   if (event.source !== frame.contentWindow) return;
   const message = event.data;
+  if (message?.type === 'localDiagramCspViolation') {
+    const diagnostic = `${String(message.directive)}: ${String(message.blockedUri)}`;
+    cspErrors.push(diagnostic);
+    stage('child-csp-violation', { directive: message.directive, blockedUri: message.blockedUri });
+    return;
+  }
   if (message?.type === 'localDiagramBootstrapReady' && !started) {
     started = true;
     stage('bootstrap-ready');

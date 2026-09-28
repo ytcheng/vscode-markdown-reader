@@ -544,34 +544,35 @@ Expected: Preview lifecycle 与 SVG policy 测试通过后提交。
 ## Task 5: 沙箱 CSP 与图块响应式样式
 
 **Files:**
-- Modify: `src/webview/local-diagram-bootstrap.ts`, `esbuild.mjs`, `media/reader.less`
+- Modify: `src/webview/local-diagram-bootstrap.ts`, `media/local-diagram-frame.html` (generated), `media/reader.less`
 - Modify: `test/unit/WebviewHtml.test.ts`, `test/unit/ReaderStyles.test.ts`
+- Modify: `test/support/localDiagramProbe.ts` to collect child-frame CSP diagnostics
 
 **Interfaces:**
 - Consumes: Task 4 的 SVG validator 与 Webview local renderer。
 - Produces: 父子脚本策略均仅额外开放 `'wasm-unsafe-eval'`；主策略其他源不变；子 frame 仍只运行 nonce 脚本，并按需允许 WASM 与 blob worker。
 - Produces: 图形容器横向滚动，SVG 自适应最大宽度并保留宽高比。
 
-- [ ] **Step 1: 为 CSP 和响应式图样式写断言**
+- [x] **Step 1: 为 CSP 和响应式图样式写断言**
 
 扩展 `WebviewHtml.test.ts` 确认父 CSP 含 `'wasm-unsafe-eval'`、不含 `'unsafe-eval'` 且 script-src 来源不变；扩展 `ReaderStyles.test.ts` 读取 `media/reader.less`，确认 diagram 容器允许横向 overflow，图片 `max-width: 100%` 和 `height: auto`。
 
-- [ ] **Step 2: 运行样式断言确认新 selector 不存在**
+- [x] **Step 2: 运行样式断言确认新 selector 不存在**
 
 Run: `npm run test:unit -- test/unit/WebviewHtml.test.ts test/unit/ReaderStyles.test.ts`
 Expected: 新 CSS selector 断言 FAIL；父 CSP 现有断言 PASS。
 
-- [ ] **Step 3: 收紧 renderer 子页 CSP**
+- [x] **Step 3: 收紧 renderer 子页 CSP**
 
-在 `local-diagram-bootstrap.ts` 为 child srcdoc CSP 设置 `default-src 'none'`、nonce script、`'wasm-unsafe-eval'`、`worker-src blob:`、data 图片、renderer inline style、无 fonts、`connect-src 'none'`。不触碰 `src/webview/html.ts` 的主 Webview CSP。
-在子页同时监听 `securitypolicyviolation`，只把 directive 与 blocked URI 汇报给 parent probe，用于确认有效图和离线 include 没有偷偷联网。
+复核 `esbuild.mjs` 生成的 child srcdoc CSP 只包含 `default-src 'none'`、nonce script、`'wasm-unsafe-eval'`、`worker-src blob:`、data 图片、renderer inline style、无 fonts、`connect-src 'none'`；该 policy 已在 Task 2 配置，不增加新的来源或放宽主页面 JavaScript 权限。
+在 `local-diagram-bootstrap.ts` 监听 `securitypolicyviolation`，只把 directive 与 blocked URI 汇报给 parent probe，用于确认有效图和离线 include 没有偷偷联网。
 
 ```html
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none'; script-src 'nonce-MERMAID_NONCE' 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none';">
 ```
 
-- [ ] **Step 4: 添加图块响应式样式**
+- [x] **Step 4: 添加图块响应式样式**
 
 在 `reader.less` 添加以下规则；图块图片不设固定宽高，不覆盖 SVG 内部颜色。
 
@@ -582,18 +583,18 @@ Expected: 新 CSS selector 断言 FAIL；父 CSP 现有断言 PASS。
 .markdown-body .local-diagram-error { color: var(--danger-color); font-size: 0.9em; }
 ```
 
-- [ ] **Step 5: 固定主 CSP 与响应式样式回归断言**
+- [x] **Step 5: 固定主 CSP 与响应式样式回归断言**
 
 在 `WebviewHtml.test.ts` 断言主文档仅允许 `'wasm-unsafe-eval'`、仍不允许 `'unsafe-eval'` 且没有新增 script 来源；在 `ReaderStyles.test.ts` 断言本地图块横向滚动、图片 max-width 为 100% 且 height 为 auto。
 
-- [ ] **Step 6: 运行 CSP 与样式单测**
+- [x] **Step 6: 运行 CSP 与样式单测**
 
 Run: `npm run test:unit -- test/unit/WebviewHtml.test.ts test/unit/ReaderStyles.test.ts`
 Expected: JavaScript `unsafe-eval` 仍被禁止，图块 overflow 与图片尺寸规则全部 PASS；Extension Host 集成测试验证父子 WASM 策略和子 sandbox。
 
-- [ ] **Step 7: 提交沙箱 CSP 与图块样式**
+- [x] **Step 7: 提交沙箱 CSP 与图块样式**
 
-Run: `git add src/webview/local-diagram-bootstrap.ts esbuild.mjs media/reader.less test/unit/WebviewHtml.test.ts test/unit/ReaderStyles.test.ts && git commit -m "feat: sandbox and style local diagrams"`
+Run: `git add src/webview/local-diagram-bootstrap.ts media/local-diagram-frame.html media/reader.less media/reader.css test/unit/WebviewHtml.test.ts test/unit/ReaderStyles.test.ts test/support/localDiagramProbe.ts && git commit -m "feat: sandbox and style local diagrams"`
 Expected: CSP 与样式测试通过后提交。
 
 ## Task 6: 扩展 HTML/打印导出快照

@@ -1088,6 +1088,25 @@ body[data-reader-color='light'] .selection-edit-button {
   outline: 2px solid var(--primary-color, var(--vscode-focusBorder, #007acc));
   outline-offset: 3px;
 }
+.markdown-body figure.local-diagram {
+  margin: 1.5em 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.markdown-body .local-diagram-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.markdown-body .local-diagram-progress {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+.markdown-body .local-diagram-error {
+  color: var(--danger-color);
+  font-size: 0.9em;
+}
 .markdown-body .reader-image-zoom {
   cursor: zoom-in;
   user-select: none;
