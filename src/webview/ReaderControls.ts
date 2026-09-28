@@ -86,9 +86,9 @@ export class ReaderControls {
   }
   requestExport(type: 'print' | 'exportHtml'): void {
     if (this.#revision < 0) return;
-    const diagrams = [...this.document.querySelectorAll<HTMLElement>('#document [data-mermaid]')]
+    const diagrams = [...this.document.querySelectorAll<HTMLElement>('#document [data-mermaid], #document [data-local-diagram]')]
       .map((figure) => {
-        const image = figure.querySelector<HTMLImageElement>('img.mermaid-diagram');
+        const image = figure.querySelector<HTMLImageElement>('img.mermaid-diagram, img.local-diagram-image');
         return image && (!image.dataset.readerColor || image.dataset.readerColor === this.document.body.dataset.readerColor) ? image.getAttribute('src') ?? '' : '';
       });
     this.post({ type, diagrams, revision: this.#revision });

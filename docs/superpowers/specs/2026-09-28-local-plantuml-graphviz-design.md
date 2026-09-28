@@ -88,7 +88,7 @@ flowchart LR
 - iframe 仅加载扩展安装包内的代码和资源，不配置网络加载路径；外部 PlantUML 标准库加载被禁用。
 - renderer 输出在接收端检查有效 SVG 根元素，以及 script、事件处理器、危险 URL 和外部资源引用；校验失败时不显示该 SVG。
 - Graphviz runtime 固定输出的 XML declaration 和 SVG 1.1 外部 DTD 由 adapter 精确移除；安全校验器拒绝其余 DTD/entity。PlantUML 的 `plantuml-src` 处理指令只作为安全元数据保留。
-- SVG 只通过 `img.src = data:image/svg+xml;charset=utf-8,...` 载入。XML DOMParser 只用于校验结构，不把解析节点插入主文档；不使用 `innerHTML` 注入 renderer 输出。
+- SVG 只通过 `img.src = data:image/svg+xml;charset=utf-8,...` 载入。共享 XML tokenizer 只校验结构，不把解析节点插入主文档；不使用 `innerHTML` 注入 renderer 输出。
 - 只为 WebAssembly 编译加入 CSP 的 `'wasm-unsafe-eval'`，不允许 JavaScript 字符串求值用的 `'unsafe-eval'`。srcdoc iframe 继承父 CSP，因此父、子 `script-src` 均需该 token；其他脚本、网络源与 sandbox 权限维持最小范围。
 
 ## 导出行为

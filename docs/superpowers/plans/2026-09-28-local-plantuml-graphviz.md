@@ -429,7 +429,7 @@ Expected: FAIL，指出 `src/security/svg.ts` 或 `toSafeSvgDataUri` 不存在�
 
 - [x] **Step 3: 实现共享 SVG 字符串校验**
 
-实现 `validateRendererSvg(svg: string): void`，用 XML DOMParser 校验唯一闭合 SVG namespace 根；拒绝 DOCTYPE/ENTITY、活动节点、事件属性、非 fragment href、危险 CSS URL 和非 `plantuml-src` 处理指令。DOMParser 只用于校验，不插入主文档。XML parser 会解码属性实体后再验证。Graphviz adapter 只删除其固定的 XML declaration 和 SVG 1.1 外部 DTD；未知 DTD 继续拒绝。`toSafeSvgDataUri` 与 `isSafeSvgDataUri` 共用该校验函数；后者先验证 data URI prefix 并 percent decode。
+实现跨 Webview 与 Extension Host 共用的纯 TypeScript XML tokenizer，校验唯一闭合 SVG namespace 根；拒绝 DOCTYPE/ENTITY、活动节点、事件属性、非 fragment href、危险 CSS URL 和非 `plantuml-src` 处理指令。tokenizer 只校验结构，不把解析节点插入主文档。它会先解码 XML 预定义/数字实体再验证属性。Graphviz adapter 只删除其固定的 XML declaration 和 SVG 1.1 外部 DTD；未知 DTD 继续拒绝。`toSafeSvgDataUri` 与 `isSafeSvgDataUri` 共用该校验函数；后者先验证 data URI prefix 并 percent decode。
 
 ```ts
 const SVG_PREFIX = 'data:image/svg+xml;charset=utf-8,';
@@ -602,7 +602,7 @@ Expected: CSP 与样式测试通过后提交。
 **Files:**
 - Modify: `src/webview/ReaderControls.ts`
 - Modify: `src/export/ExportService.ts`
-- Modify: `src/security/messages.ts`
+- Modify: `src/security/messages.ts`, `src/security/svg.ts`
 - Modify: `test/unit/ReaderControls.test.ts`, `test/unit/ExportService.test.ts`, `test/unit/messages.test.ts`
 
 **Interfaces:**
@@ -610,11 +610,11 @@ Expected: CSP 与样式测试通过后提交。
 - Produces: 按文档中 Mermaid/PlantUML/Graphviz 图块顺序嵌入有效快照；空值保留源码并显示“不完整” warning。
 - Produces: ExportService 的 pending warning 使用通用文案 `Some diagrams were not ready; their source is included instead.`。
 
-- [ ] **Step 1: 扩展 ReaderControls 导出顺序测试**
+- [x] **Step 1: 扩展 ReaderControls 导出顺序测试**
 
 在 `ReaderControls.test.ts` 放置 Mermaid、PlantUML、Graphviz 三种图块；点击 Export HTML 后断言 `diagrams` 数组按 DOM 顺序提交，没渲染完成或颜色失配的图块对应 `''`。
 
-- [ ] **Step 2: 实现统一快照选择器**
+- [x] **Step 2: 实现统一快照选择器**
 
 修改 `ReaderControls.requestExport`，按 `#document [data-mermaid], #document [data-local-diagram]` 的联合 DOM 顺序遍历；Mermaid 读取 `img.mermaid-diagram`，新图读取 `img.local-diagram-image`，所有图块各占一个快照槽。
 
@@ -626,11 +626,11 @@ const diagrams = [...figures].map((figure) => {
 });
 ```
 
-- [ ] **Step 3: 增加混合图与 pending fallback 导出测试**
+- [x] **Step 3: 增加混合图与 pending fallback 导出测试**
 
 在 `ExportService.test.ts` 传入 Mermaid、PlantUML、Graphviz 三个不同 SVG 和一个空快照。解析生成 HTML，断言三张图片按源文档顺序出现，pending 图块保留对应源代码，warning 可见。
 
-- [ ] **Step 4: 替换只匹配 Mermaid 的 ExportService 规则**
+- [x] **Step 4: 替换只匹配 Mermaid 的 ExportService 规则**
 
 匹配 `[data-mermaid]` 与 `[data-local-diagram]` renderer-owned figure；用单调递增快照索引处理每个图块。快照为空则保留原 figure；有效快照通过 `isSafeSvgDataUri` 后写成 `<img>`。
 
@@ -645,18 +645,20 @@ content = content.replace(/<figure\b[^>]*(?:data-mermaid|data-local-diagram)[^>]
 });
 ```
 
-- [ ] **Step 5: 复用 SVG 与消息上限校验**
+- [x] **Step 5: 复用 SVG 与消息上限校验**
 
 让 `parseWebviewMessage` 与 `ExportService.validateDiagrams` 对每个非空快照调用共享的 `isSafeSvgDataUri`；保持当前 1000 图与总计 10 MiB 限制。消息测试再传入编码后的 SVG `<script>` 和 `javascript:` href，断言在 Extension Host 处理前被拒绝。
 
-- [ ] **Step 6: 运行导出及消息单测**
+- [x] **Step 6: 运行导出及消息单测**
 
-Run: `npm run test:unit -- test/unit/ReaderControls.test.ts test/unit/ExportService.test.ts test/unit/messages.test.ts`
-Expected: 快照顺序、空值回退、SVG 安全校验、revision 保护和 10 MiB 限制全部 PASS。
+Run: `npm run test:unit -- test/unit/ReaderControls.test.ts test/unit/ExportService.test.ts test/unit/messages.test.ts test/unit/SvgSafety.test.ts`
+Run: `npm run check:types`
+Run: `npm run test:extension`
+Expected: 快照顺序、空值回退、SVG 安全校验、revision 保护和 10 MiB 限制全部 PASS；现有 Webview runtime 回归通过。
 
-- [ ] **Step 7: 提交导出快照支持**
+- [x] **Step 7: 提交导出快照支持**
 
-Run: `git add src/webview/ReaderControls.ts src/export/ExportService.ts src/security/messages.ts test/unit/ReaderControls.test.ts test/unit/ExportService.test.ts test/unit/messages.test.ts && git commit -m "feat: export local diagram snapshots"`
+Run: `git add src/webview/ReaderControls.ts src/export/ExportService.ts src/security/messages.ts src/security/svg.ts media/reader.js media/reader.js.map test/unit/ReaderControls.test.ts test/unit/ExportService.test.ts test/unit/messages.test.ts test/unit/SvgSafety.test.ts docs/superpowers/specs/2026-09-28-local-plantuml-graphviz-design.md docs/superpowers/plans/2026-09-28-local-plantuml-graphviz.md && git commit -m "feat: export local diagram snapshots"`
 Expected: 混合图形导出顺序及消息校验通过后提交。
 
 ## Task 7: 真实图样、README、最终包体积与回归

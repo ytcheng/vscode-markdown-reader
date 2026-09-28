@@ -341,8 +341,8 @@
     }
     requestExport(type) {
       if (this.#revision < 0) return;
-      const diagrams = [...this.document.querySelectorAll("#document [data-mermaid]")].map((figure) => {
-        const image = figure.querySelector("img.mermaid-diagram");
+      const diagrams = [...this.document.querySelectorAll("#document [data-mermaid], #document [data-local-diagram]")].map((figure) => {
+        const image = figure.querySelector("img.mermaid-diagram, img.local-diagram-image");
         return image && (!image.dataset.readerColor || image.dataset.readerColor === this.document.body.dataset.readerColor) ? image.getAttribute("src") ?? "" : "";
       });
       this.post({ type, diagrams, revision: this.#revision });
@@ -673,43 +673,170 @@
   var URL_ATTRIBUTES = /* @__PURE__ */ new Set(["href", "src", "data", "poster", "action", "formaction"]);
   function validateRendererSvg(svg) {
     if (typeof svg !== "string" || !svg.trim()) throw new Error("Renderer returned an empty SVG");
-    if (/<!\s*(?:doctype|entity)\b/i.test(svg)) throw new Error("SVG declarations are not allowed");
-    if (typeof DOMParser === "undefined") throw new Error("SVG validation requires an XML parser");
-    const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
-    if (parsed.querySelector("parsererror")) throw new Error("Renderer returned malformed SVG");
-    const root = parsed.documentElement;
-    if (!root || root.localName !== "svg" || root.namespaceURI !== SVG_NAMESPACE) {
-      throw new Error("Renderer output must have an SVG root element");
-    }
-    const validateNode = (node) => {
-      if (node.nodeType === 7) {
-        const target = node.target.toLowerCase();
+    if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(svg)) throw new Error("SVG contains invalid XML characters");
+    const stack = [];
+    let rootSeen = false;
+    let rootClosed = false;
+    let styleContent;
+    let offset = 0;
+    while (offset < svg.length) {
+      if (svg[offset] !== "<") {
+        const end2 = svg.indexOf("<", offset);
+        const text = decodeXmlEntities(svg.slice(offset, end2 < 0 ? svg.length : end2));
+        if (styleContent !== void 0) styleContent += text;
+        else if (stack.length === 0 && text.trim()) throw new Error("Text outside the SVG root is not allowed");
+        offset = end2 < 0 ? svg.length : end2;
+        continue;
+      }
+      if (svg.startsWith("<!--", offset)) {
+        const end2 = svg.indexOf("-->", offset + 4);
+        if (end2 < 0 || svg.slice(offset + 4, end2).includes("--")) throw new Error("Malformed SVG comment");
+        offset = end2 + 3;
+        continue;
+      }
+      if (svg.startsWith("<?", offset)) {
+        if (styleContent !== void 0) throw new Error("Processing instructions are not allowed in SVG styles");
+        const end2 = svg.indexOf("?>", offset + 2);
+        if (end2 < 0) throw new Error("Malformed SVG processing instruction");
+        const instruction = svg.slice(offset + 2, end2).trim();
+        const target = instruction.match(/^([A-Za-z_][A-Za-z0-9_.:-]*)/)?.[1]?.toLowerCase();
         if (target !== "plantuml-src") throw new Error("SVG processing instructions are not allowed");
+        offset = end2 + 2;
+        continue;
       }
-      if (node.nodeType === 1) {
-        const element = node;
-        if (FORBIDDEN_ELEMENTS.has(element.localName.toLowerCase())) {
-          throw new Error("Active SVG elements are not allowed");
+      if (svg.startsWith("<!", offset)) throw new Error("SVG declarations are not allowed");
+      const end = findTagEnd(svg, offset + 1);
+      if (end < 0) throw new Error("Malformed SVG tag");
+      let tag = svg.slice(offset + 1, end).trim();
+      if (tag.startsWith("/")) {
+        if (styleContent !== void 0) {
+          const styleName = stack.at(-1)?.split(":").at(-1)?.toLowerCase();
+          if (styleName !== "style") throw new Error("Elements inside SVG styles are not allowed");
         }
-        for (const attribute of Array.from(element.attributes)) {
-          const name = attribute.name.toLowerCase();
-          const value = attribute.value.trim();
-          if (name.startsWith("on")) throw new Error("SVG event handlers are not allowed");
-          if (name === "xml:base") throw new Error("SVG base URLs are not allowed");
-          if (URL_ATTRIBUTES.has(attribute.localName.toLowerCase()) && value && !value.startsWith("#")) {
-            throw new Error("External SVG references are not allowed");
-          }
-          if (name === "style" || /\burl\s*\(/i.test(value)) validateCss(value);
+        const closingName = tag.slice(1).trim();
+        if (!/^[A-Za-z_:][A-Za-z0-9_.:-]*$/.test(closingName) || stack.pop() !== closingName) {
+          throw new Error("SVG tags are not properly nested");
         }
-        if (element.localName.toLowerCase() === "style") validateCss(element.textContent ?? "");
+        if (closingName.split(":").at(-1)?.toLowerCase() === "style") {
+          validateCss(styleContent ?? "");
+          styleContent = void 0;
+        }
+        if (stack.length === 0) rootClosed = true;
+        offset = end + 1;
+        continue;
       }
-      for (const child of Array.from(node.childNodes)) validateNode(child);
-    };
-    validateNode(parsed);
+      const selfClosing = /\/\s*$/.test(tag);
+      if (selfClosing) tag = tag.replace(/\/\s*$/, "").trimEnd();
+      const nameMatch = tag.match(/^([A-Za-z_:][A-Za-z0-9_.:-]*)/);
+      if (!nameMatch) throw new Error("Malformed SVG element name");
+      const name = nameMatch[1];
+      const localName = name.split(":").at(-1).toLowerCase();
+      const attributes = parseAttributes(tag.slice(name.length));
+      if (!rootSeen) {
+        if (name !== "svg" || attributes.get("xmlns") !== SVG_NAMESPACE) {
+          throw new Error("Renderer output must have an SVG namespace root element");
+        }
+        rootSeen = true;
+      } else if (rootClosed || stack.length === 0) {
+        throw new Error("Renderer output must contain one SVG root element");
+      }
+      if (FORBIDDEN_ELEMENTS.has(localName)) throw new Error("Active SVG elements are not allowed");
+      if (styleContent !== void 0) throw new Error("Elements inside SVG styles are not allowed");
+      for (const [attributeName, value] of attributes) {
+        const normalizedName = attributeName.toLowerCase();
+        const attributeLocalName = normalizedName.split(":").at(-1);
+        if (normalizedName.startsWith("on")) throw new Error("SVG event handlers are not allowed");
+        if (normalizedName === "xml:base") throw new Error("SVG base URLs are not allowed");
+        if (URL_ATTRIBUTES.has(attributeLocalName) && value && !isFragment(value)) {
+          throw new Error("External SVG references are not allowed");
+        }
+        if (attributeLocalName === "style" || /\burl\s*\(/i.test(value)) validateCss(value);
+      }
+      if (localName === "style") styleContent = "";
+      if (!selfClosing) stack.push(name);
+      else if (stack.length === 0) rootClosed = true;
+      else if (localName === "style") {
+        validateCss(styleContent ?? "");
+        styleContent = void 0;
+      }
+      offset = end + 1;
+    }
+    if (!rootSeen || !rootClosed || stack.length > 0 || styleContent !== void 0) {
+      throw new Error("Renderer returned incomplete SVG");
+    }
   }
   function toSafeSvgDataUri(svg) {
     validateRendererSvg(svg);
     return `${SVG_DATA_URI_PREFIX}${encodeURIComponent(svg)}`;
+  }
+  function findTagEnd(source, offset) {
+    let quote = "";
+    for (let index = offset; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote) {
+        if (character === quote) quote = "";
+      } else if (character === '"' || character === "'") {
+        quote = character;
+      } else if (character === ">") {
+        return index;
+      }
+    }
+    return -1;
+  }
+  function parseAttributes(source) {
+    const attributes = /* @__PURE__ */ new Map();
+    let offset = 0;
+    while (offset < source.length) {
+      while (/\s/.test(source[offset] ?? "")) offset += 1;
+      if (offset >= source.length) break;
+      const match = source.slice(offset).match(/^([A-Za-z_:][A-Za-z0-9_.:-]*)/);
+      if (!match) throw new Error("Malformed SVG attribute name");
+      const name = match[1];
+      if (attributes.has(name)) throw new Error("Duplicate SVG attribute");
+      offset += name.length;
+      while (/\s/.test(source[offset] ?? "")) offset += 1;
+      if (source[offset] !== "=") throw new Error("SVG attributes must have values");
+      offset += 1;
+      while (/\s/.test(source[offset] ?? "")) offset += 1;
+      const quote = source[offset];
+      if (quote !== '"' && quote !== "'") throw new Error("SVG attributes must be quoted");
+      offset += 1;
+      const end = source.indexOf(quote, offset);
+      if (end < 0) throw new Error("Unclosed SVG attribute");
+      const rawValue = source.slice(offset, end);
+      if (rawValue.includes("<")) throw new Error("SVG attributes cannot contain unescaped markup");
+      attributes.set(name, decodeXmlEntities(rawValue));
+      offset = end + 1;
+    }
+    return attributes;
+  }
+  function decodeXmlEntities(value) {
+    let decoded = "";
+    for (let offset = 0; offset < value.length; offset += 1) {
+      if (value[offset] !== "&") {
+        decoded += value[offset];
+        continue;
+      }
+      const end = value.indexOf(";", offset + 1);
+      if (end < 0) throw new Error("Malformed XML entity");
+      const entity = value.slice(offset + 1, end);
+      const named = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+      if (entity in named) decoded += named[entity];
+      else if (/^#\d+$/.test(entity) || /^#x[0-9a-f]+$/i.test(entity)) {
+        const codePoint = entity[1].toLowerCase() === "x" ? Number.parseInt(entity.slice(2), 16) : Number.parseInt(entity.slice(1), 10);
+        if (!isValidXmlCodePoint(codePoint)) throw new Error("Invalid XML character reference");
+        decoded += String.fromCodePoint(codePoint);
+      } else throw new Error("Unknown XML entity");
+      offset = end;
+    }
+    return decoded;
+  }
+  function isValidXmlCodePoint(codePoint) {
+    return codePoint === 9 || codePoint === 10 || codePoint === 13 || codePoint >= 32 && codePoint <= 55295 || codePoint >= 57344 && codePoint <= 65533 || codePoint >= 65536 && codePoint <= 1114111;
+  }
+  function isFragment(value) {
+    const fragment = value.trim();
+    return fragment.startsWith("#") && fragment.length > 1 && !/[\s"'()]/.test(fragment.slice(1));
   }
   function validateCss(css) {
     const normalized = css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -720,13 +847,9 @@
     let match;
     while ((match = urlPattern.exec(normalized)) !== null) {
       const target = match[1].trim().replace(/^(?:"([^"]*)"|'([^']*)')$/, "$1$2");
-      if (!target.startsWith("#") || target.length < 2 || /[\s"'()]/.test(target.slice(1))) {
-        throw new Error("External SVG CSS references are not allowed");
-      }
+      if (!isFragment(target)) throw new Error("External SVG CSS references are not allowed");
     }
-    if (/\burl\b/i.test(normalized.replace(urlPattern, ""))) {
-      throw new Error("Malformed SVG CSS reference");
-    }
+    if (/\burl\b/i.test(normalized.replace(urlPattern, ""))) throw new Error("Malformed SVG CSS reference");
   }
 
   // src/webview/LocalDiagramFrame.ts

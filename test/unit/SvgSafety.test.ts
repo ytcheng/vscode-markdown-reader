@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { isSafeSvgDataUri, toSafeSvgDataUri } from '../../src/security/svg.js';
 
@@ -37,5 +36,6 @@ describe('local diagram SVG safety', () => {
     expect(isSafeSvgDataUri('data:image/png;base64,AA==')).toBe(false);
     expect(isSafeSvgDataUri('data:image/svg+xml;charset=utf-8,%E0%A4%A')).toBe(false);
     expect(isSafeSvgDataUri('data:image/svg+xml;charset=utf-8,%3Chtml%2F%3E')).toBe(false);
+    expect(isSafeSvgDataUri('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" />')).toBe(false);
   });
 });

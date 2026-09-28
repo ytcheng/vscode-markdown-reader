@@ -39,14 +39,31 @@ describe('parseWebviewMessage', () => {
 });
 
 it('validates setting and export messages without arbitrary HTML or commands', () => {
+  const safeSnapshot = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" />')}`;
   expect(parseWebviewMessage({ type: 'updateSetting', requestId: 1, key: 'theme', value: 'github' })).toEqual({ type: 'updateSetting', requestId: 1, key: 'theme', value: 'github' });
   expect(parseWebviewMessage({ type: 'updateSetting', requestId: 1, key: 'fontSize', value: 100 })).toBeUndefined();
   expect(parseWebviewMessage({ type: 'updateSetting', requestId: 1, key: 'fontFamily', value: 'a; color:red' })).toBeUndefined();
   expect(parseWebviewMessage({ type: 'updateSetting', requestId: 1, key: '__proto__', value: {} })).toBeUndefined();
   expect(parseWebviewMessage({ type: 'resetSettings', requestId: 1 })).toEqual({ type: 'resetSettings', requestId: 1 });
   expect(parseWebviewMessage({ type: 'openSettings' })).toEqual({ type: 'openSettings' });
-  expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: ['data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E'] })).toBeDefined();
+  expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: [safeSnapshot] })).toBeDefined();
   expect(parseWebviewMessage({ type: 'exportHtml', revision: 1, diagrams: [], html: '<script>x</script>' })).toBeUndefined();
   expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: ['https://example.com'] })).toBeUndefined();
   expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: ['data:image/svg+xml;charset=utf-8,x" onerror="evil'] })).toBeUndefined();
+  for (const svg of [
+    '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><rect onload="alert(1)" /></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)" /></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/a.png" /></svg>'
+  ]) {
+    const unsafeSnapshot = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: [unsafeSnapshot] })).toBeUndefined();
+  }
+});
+
+it('keeps the diagram snapshot count and aggregate size limits', () => {
+  expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: Array(1000).fill('') })).toBeDefined();
+  expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: Array(1001).fill('') })).toBeUndefined();
+  const oversized = `data:image/svg+xml;charset=utf-8,${'a'.repeat(10 * 1024 * 1024 + 1)}`;
+  expect(parseWebviewMessage({ type: 'print', revision: 1, diagrams: [oversized] })).toBeUndefined();
 });

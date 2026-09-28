@@ -98,6 +98,33 @@ describe('ExportService', () => {
     expect(vscode.window.showWarningMessage).toHaveBeenCalled();
   });
 
+  it('exports mixed diagram snapshots in source order and preserves a pending local diagram', async () => {
+    const snapshot = (label: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg"><text>${label}</text></svg>`)}`;
+    const mermaid = snapshot('mermaid');
+    const plantuml = snapshot('plantuml');
+    const graphviz = snapshot('graphviz');
+    const source = [
+      '```mermaid\ngraph TD; A-->B\n```',
+      '```plantuml\n@startuml\nAlice -> Bob\n@enduml\n```',
+      '```dot\ndigraph G { A -> B }\n```',
+      '```graphviz\ndigraph G { C -> D }\n```'
+    ].join('\n\n');
+    const html = await exportHtml(source, [mermaid, plantuml, '', graphviz]);
+    const dom = new JSDOM(html).window.document as Document;
+
+    expect([...dom.querySelectorAll('.reader-export-diagram img')].map((image) => image.getAttribute('src'))).toEqual([mermaid, plantuml, graphviz]);
+    expect(dom.querySelector('figure[data-local-diagram="graphviz"] pre code')?.textContent).toContain('digraph G { A -> B }');
+    expect(dom.querySelector('.reader-export-warnings')?.textContent).toContain('Some diagrams were not ready; their source is included instead.');
+  });
+
+  it('rejects active or external content inside encoded SVG snapshots', async () => {
+    const service = new ExportService(vscode.Uri.file('/extension') as never);
+    const unsafe = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')}`;
+
+    await expect(service.exportDocument(document('') as never, defaultSettings, [unsafe], 'exportHtml')).rejects.toThrow(/diagram/i);
+    expect(vscode.window.showSaveDialog).not.toHaveBeenCalled();
+  });
+
   it('rejects unsafe diagram URIs and oversized aggregate payloads', async () => {
     const service = new ExportService(vscode.Uri.file('/extension') as never);
     await expect(service.exportDocument(document('') as never, defaultSettings, ['javascript:alert(1)'], 'exportHtml')).rejects.toThrow(/diagram/i);

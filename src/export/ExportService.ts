@@ -6,10 +6,10 @@ import * as vscode from 'vscode';
 import { ResourceResolver } from '../links/ResourceResolver.js';
 import { MarkdownRenderer } from '../renderer/MarkdownRenderer.js';
 import { classifyLink } from '../security/links.js';
+import { isSafeSvgDataUri } from '../security/svg.js';
 import { effectiveFontSize, normalizeSettings, useLargeFileMode, type ReaderSettings } from '../settings/ReaderSettings.js';
 
 const MAX_DIAGRAM_BYTES = 10 * 1024 * 1024;
-const SVG_PREFIX = 'data:image/svg+xml;charset=utf-8,';
 const IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
   '.webp': 'image/webp', '.avif': 'image/avif', '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.ico': 'image/x-icon'
@@ -55,13 +55,15 @@ export class ExportService {
       });
     }
     let diagramIndex = 0;
-    content = content.replace(/<figure\b[^>]*\bdata-mermaid\b[^>]*>[\s\S]*?<\/figure>/g, (figure) => {
+    content = content.replace(/<figure\b[^>]*\b(?:data-mermaid|data-local-diagram)(?:\b|=)[^>]*>[\s\S]*?<\/figure>/g, (figure) => {
       const snapshot = diagrams[diagramIndex++];
       if (!snapshot) {
-        warnings.add('Some diagrams were not ready; their Mermaid source is included instead.');
+        warnings.add('Some diagrams were not ready; their source is included instead.');
         return figure;
       }
-      return `<figure class="reader-export-diagram"><img src="${escapeHtml(snapshot)}" alt="Mermaid diagram ${diagramIndex}"></figure>`;
+      const language = figure.match(/\bdata-local-diagram="([^"]+)"/)?.[1];
+      const label = language === 'plantuml' ? 'PlantUML diagram' : language === 'graphviz' ? 'Graphviz diagram' : 'Mermaid diagram';
+      return `<figure class="reader-export-diagram"><img src="${escapeHtml(snapshot)}" alt="${label}"></figure>`;
     });
     content = content.replace(/<a\b[^>]*\bhref="([^"]*)"[^>]*>/g, (tag, value: string) => {
       const href = decodeAttribute(value);
@@ -138,12 +140,7 @@ function validateDiagrams(diagrams: string[]): void {
   for (const diagram of diagrams) {
     if (typeof diagram !== 'string' || (size += Buffer.byteLength(diagram, 'utf8')) > MAX_DIAGRAM_BYTES) throw new Error('Diagram snapshots exceed the 10 MB export limit.');
     if (!diagram) continue;
-    if (!diagram.startsWith(SVG_PREFIX)) throw new Error('Invalid diagram snapshot: only encoded SVG image data is accepted.');
-    try {
-      const encoded = diagram.slice(SVG_PREFIX.length);
-      const svg = decodeURIComponent(encoded);
-      if (!/^\s*<svg\b[^>]*[\s\S]*<\/svg>\s*$/.test(svg) || /[<>"\s]/.test(encoded)) throw new Error('Invalid SVG');
-    } catch { throw new Error('Invalid diagram snapshot: malformed SVG image data.'); }
+    if (!isSafeSvgDataUri(diagram)) throw new Error('Invalid diagram snapshot: only safe encoded SVG image data is accepted.');
   }
 }
 
