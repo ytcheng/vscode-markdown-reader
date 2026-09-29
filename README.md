@@ -4,7 +4,7 @@
 
 A focused reading view for long documents, with a synchronized table of contents, highlighted code, Mermaid, PlantUML and Graphviz diagrams, and math. Great for specs, READMEs, plans, and AI-generated notes.
 
-![Reader table of contents and rendered plan; selecting a heading jumps to that section](assets/markdown-reader-demo.gif)
+![Markdown Reader preview showing the table of contents, highlighted code, diagrams, math, interactive tasks, click-to-zoom images and diagrams, and light and dark themes](assets/markdown-reader-demo.gif)
 
 **Current-tab reading · Synchronized table of contents · Code, diagrams, and math**
 
@@ -14,24 +14,20 @@ A focused reading view for long documents, with a synchronized table of contents
 
 ![Markdown Reader showing a nested table of contents, Shiki code highlighting, a Mermaid diagram, KaTeX math, and a table](assets/markdown-reader-preview.png)
 
-- **Choose your theme and typography** — Reader / GitHub themes, light / dark / follow-VS-Code appearance, local body fonts and 12–32 px text.
-- **Large file mode** — automatically shows code, math and diagrams as source for documents of 1 MiB or larger.
-- **Export and print** — save HTML with embedded local resources, or print and save PDF through your browser.
 - **Read in the current tab** — open Markdown as a clean document instead of a source file or a forced side-by-side preview.
 - **Synchronized table of contents** — headings become a navigable TOC that follows your reading position.
-- **Stay oriented after changes** — refreshes when the file changes and restores your reading position where possible.
-- **Source and Preview, one shortcut** — switch in either direction with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>.
-- **Find in the document** — use <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> to search, highlight results, and move between matches.
-- **Shiki code highlighting** — TextMate grammars, language labels, and copy buttons; unknown languages remain readable plain text.
-- **Diagrams and math, offline** — Mermaid, PlantUML and Graphviz diagrams plus KaTeX inline/block formulas render with bundled resources and follow the reader's light/dark appearance.
-- **Zoomable diagrams and images** — click a Mermaid, PlantUML or Graphviz diagram, or a standalone Markdown image, to open a viewer that fills the preview. Keyboard users can Tab to a diagram and press Enter or Space. Zoom with the bottom controls and drag to pan when the image overflows; linked images keep their link behavior.
-- **Edit what you read** — select body text, then click the pencil that appears above the selection's end, or click the **pencil icon** beside a heading to open its source line in the same editor group.
-- **Copy heading links** — use **#** beside a heading to copy its encoded `#fragment` for links within that document.
-- **Remember your TOC** — visibility and collapsed branches survive closing/reopening a document, independently for each document in the workspace.
-- **Fits your layout** — show or hide the TOC, resize it, choose its heading depth, and set a preferred reading width.
-- **Several documents at once** — each Markdown file gets its own independent reader tab.
-- **Keep diffs source-focused** — regular Markdown files open in the reader, while diffs continue to use VS Code's text diff editor.
-- **Choose the interface language** — follow VS Code by default, or select English or Simplified Chinese in Reading Settings.
+- **Navigate with a synchronized table of contents** — headings form a navigable TOC that follows your reading position.
+- **Read code, diagrams, and math in context** — Shiki highlights code with language labels and copy buttons; Mermaid, PlantUML, and Graphviz diagrams plus KaTeX formulas render locally with bundled resources. Unknown code languages remain readable as plain text.
+- **Interact with task lists** — check or uncheck Markdown tasks directly in the preview; the source document updates with your change.
+- **Zoom diagrams and images** — click a Mermaid, PlantUML, or Graphviz diagram, or any standalone Markdown image, to open the full-preview viewer. Use the zoom controls and drag to pan; linked images keep their link behavior. Keyboard users can focus a diagram and press Enter or Space.
+- **Move from reading to editing** — switch Source and Preview with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>, select body text and click the pencil, or use the **pencil icon** beside a heading to open its source line in the same editor group.
+- **Find and link to content** — search with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd>; use **#** beside a heading to copy its encoded `#fragment`.
+- **Choose the reading appearance** — Reader / GitHub themes, light / dark / follow-VS-Code colors, local body fonts, and 12–32 px text.
+- **Keep your place** — the preview refreshes when the file changes and restores your reading position where possible. TOC visibility and collapsed branches are remembered per document.
+- **Fit the reader to your work** — show, hide, and resize the TOC, choose its heading depth and reading width, and keep separate reader tabs for separate documents. Diffs continue to use VS Code's text diff editor.
+- **Export and print** — save HTML with embedded local resources, or print and save PDF through your browser.
+- **Read large documents** — large file mode can show code, math, and diagrams as source to reduce rendering work.
+- **Use your preferred interface language** — follow VS Code by default, or select English or Simplified Chinese in Reading Settings.
 
 ## Getting started
 

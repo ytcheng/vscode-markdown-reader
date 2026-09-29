@@ -2,6 +2,11 @@
 
 All notable changes to Markdown Reader are documented in this file.
 
+## 0.3.13 — 2026-09-29
+
+- Reorder the Marketplace feature highlights and refresh the bilingual feature tour around current-tab reading, navigation, code, local diagrams, math, interactive tasks, and theme switching.
+- Regenerate the English and Chinese Webview-only demo GIFs with a tighter table-of-contents layout and a visible image click-to-zoom sequence.
+
 ## 0.3.12 — 2026-09-28
 
 - Render PlantUML and Graphviz diagrams locally with offline SVG validation and export/print support.
